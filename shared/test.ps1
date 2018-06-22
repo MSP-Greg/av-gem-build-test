@@ -126,6 +126,9 @@ if( ($gem_file_name -eq $null) -or !(Test-Path -Path $fn -PathType Leaf) ) {
   exit 1
 }
 
+Path-Make $dir_ps\test_logs
+del $dir_ps\test_logs\*.txt
+
 Load-Rubies
 foreach ($ruby in $rubies) {
   # Loop if ruby version does not exist
