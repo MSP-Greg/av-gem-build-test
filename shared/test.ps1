@@ -123,6 +123,7 @@ $fn = $dir_gem + '\' + $gem_file_name
 
 if( ($gem_file_name -eq $null) -or !(Test-Path -Path $fn -PathType Leaf) ) {
   Write-Host "Gem $gem_file_name not found!" -ForegroundColor $fc
+  $exit_code = 1
   exit 1
 }
 

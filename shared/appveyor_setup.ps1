@@ -8,6 +8,9 @@ $LastExitCode = $null
 # below sets constants & variables for use, use local_paths.ps1 for a local run
 function Init-AV-Setup {
   if ($env:APPVEYOR) {
+    $pkgs_temp = "$PSScriptRoot/../packages"
+    Path-Make $pkgs_temp
+  
     Make-Const dflt_ruby 'C:\ruby25-x64'
     Make-Const in_av     $true
 
@@ -20,7 +23,7 @@ function Init-AV-Setup {
     Make-Const DK64w     'C:\Ruby23-x64\DevKit'
 
     # Folder for storing downloaded packages
-    Make-Const pkgs      "$PSScriptRoot/../packages"
+    Make-Const pkgs      "$( Convert-Path $pkgs_temp )"
 
     # Use simple base path without all Appveyor additions
     Make-Const base_path 'C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\Program Files\Git\cmd;'
@@ -85,6 +88,17 @@ function Make-Vari($N, $V) {
   try { New-Variable -Name $N -Value $V  -Scope Script -Option AllScope -ErrorAction "Stop" }
   catch {  }
 #  New-Variable -Name $N -Value $V  -Scope Script -Option AllScope
+}
+
+#—————————————————————————————————————————————————————————————————————————————— Check-Exit
+# checks whether to exit
+function Check-Exit($msg, $pop) {
+  $exit_code = $LastExitCode
+  if ($exit_code) {
+    if ($pop) { Pop-Location }
+    Write-Host $msg -ForegroundColor $fc
+    exit $exit_code
+  }
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Check-SetVars
@@ -161,17 +175,16 @@ function Check-OpenSSL {
         $exit_code = $LastExitCode
         # below is for occasional key retrieve failure on Appveyor
         if ($exit_code) {
+          Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
           # try another keyserver
           $t1 = "pacman-key -r $key --keyserver $ks2 && pacman-key -f $key && pacman-key --lsign-key $key"
           bash.exe -lc $t1 2> $null
-          $exit_code = $LastExitCode
-          if ($exit_code) {
-            Write-Host GPG Key Lookup Failed! -ForegroundColor $fc
-            exit $exit_code
-          }
+          Check-Exit "GPG Key Lookup failed from $ks2"
         }
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
-        pacman.exe -Udd --noconfirm --noprogressbar $pkgs/$openssl
+        $pkgs_u = $pkgs.replace('\', '/')
+        pacman.exe -Udd --noconfirm --noprogressbar $pkgs_u/$openssl
+        Check-Exit "Package Install failure!"
       }
       $ssl_vhash[$mingw] = $t
     } else {

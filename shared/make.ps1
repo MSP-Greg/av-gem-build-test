@@ -64,6 +64,7 @@ foreach ($ruby in $rubies) {
     $so = $ext.so
     $src_dir = "$dir_gem\tmp\$r_plat\$so\$abi_vers"
     New-Item -Path $src_dir -ItemType Directory 1> $null
+
     Push-Location -Path $src_dir
     Write-Host "`n$($dash * 50)" Compiling $(Ruby-Desc) $ext.so -ForegroundColor $fc
     if ($env:b_config) {
@@ -72,13 +73,11 @@ foreach ($ruby in $rubies) {
     # Invoke-Expression needed due to spaces in $env:b_config
     iex "ruby.exe -I. $dir_gem\$($ext.conf) $env:b_config"
     if ($isRI2) { make.exe -j2 } else { make.exe }
-    if ($LastExitCode) {
-      Pop-Location
-      Write-Host Make Failed! -ForegroundColor $fc
-      exit $LastExitCode
-    }
+    Check-Exit "Make Failed!" $true
+
     $fn = $so + '.so'
     Write-Host Creating $dest_so\$abi_vers\$fn
+    
     Copy-Item -Path $fn -Destination $dest\$fn -Force
     Pop-Location
   }
@@ -94,10 +93,12 @@ $env:path = $dir_ruby + "25-x64\bin;$base_path"
 Push-Location $dir_gem
 $env:commit_info = $commit_info
 ruby.exe $dir_ps\package_gem.rb $g_plat $rv_min $rv_max | Tee-Object -Variable bytes
-Remove-Item Env:commit_info
 Pop-Location
-if ($LastExitCode) { exit $LastExitCode }
+Check-Exit '' 
+Remove-Item Env:commit_info
 
+# below mess is outputing package_gem.rb to console and a variable
+# the converting to UTF-8
 $bytes = [System.Text.Encoding]::Unicode.GetBytes($bytes)
 $t = @()
 foreach ($b in $bytes) {
@@ -106,7 +107,10 @@ foreach ($b in $bytes) {
 $gem_out = [System.Text.Encoding]::UTF8.GetString($t)
 
 $gem_file_name = if ($gem_out -imatch "\s+File:\s+(\S+)") { $matches[1]
-} else { exit 1 }
+  } else {
+    $exit_code = 1
+    exit 1
+  }
 
 $gem_full_name = $gem_file_name -replace '\.gem$', ''
 
