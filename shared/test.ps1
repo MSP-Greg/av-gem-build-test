@@ -2,7 +2,7 @@
 # This script is utility script, and should not require changes for any gems
 # Code by MSP-Greg, see https://github.com/MSP-Greg/av-gem-build-test
 
-if ($exit_code -ne 0) { exit $exit_code }
+if ($exit_code) { exit $exit_code }
 
 Make-Vari log_name      ''
 Make-Vari test_results  ''
@@ -12,7 +12,7 @@ Make-Vari gem_full      ''
 $dt = Get-Date -UFormat "%Y-%m-%d_%H-%M"
 
 #————————————————————————————————————————————————————————————————————————————————— Get-MS
-# parses $test_results and returns mS time, rounded to 1k
+# parses $test_results and returns mS time, rounded to 1k (seconds)
 function Get-MS {
   if ($test_results -match "(?ms)^Finished in (\d+\.\d{3})" ) {
     return [int]([math]::Round([float]$matches[1]) * 1000)
@@ -21,6 +21,7 @@ function Get-MS {
 
 #————————————————————————————————————————————————————————————————————————————————— Get-Std-Out
 # parses $test_results into string for Add-AppveyorTest -StdOut
+# as of 2018-06, limit is about 4k characters
 function Get-Std-Out {
   $stdout = if ($test_results.length -le 4000) {
     $test_results
@@ -104,14 +105,26 @@ function test_unit {
 
 #————————————————————————————————————————————————————————————————————————————————— Main
 
-# create test log folder
-if (Test-Path -Path $dir_ps\test_logs -PathType Container) {
-  Remove-Item $dir_ps\test_logs\*.txt
-} else {
-  New-Item -Path $dir_ps\test_logs -ItemType Directory 1> $null
+# if make.ps1 is bypassed, get commit_info and try to find gem name
+if ($commit_info -eq $null) {
+  Push-Location $dir_gem
+  $commit_info = $(git.exe log -1 --pretty=format:'%ci   %h   %s')
+  Pop-Location
 }
 
-$fn = $dir_gem + '/' + $gem_file_name
+if ($gem_file_name -eq '' -or $gem_file_name -eq $null) {
+  $match = $dir_gem + '\'+ $gem_name + '-*-' + $g_plat + '.gem'
+  $t = $(Get-ChildItem -Path $match | Sort-Object -Descending LastWriteTime | select -expand Name)
+  $gem_file_name = if ($t -is [array]) { $t[0] } else { $t }
+  $gem_full_name = $gem_file_name -Replace "\.gem$", ""
+}
+
+$fn = $dir_gem + '\' + $gem_file_name
+
+if( ($gem_file_name -eq $null) -or !(Test-Path -Path $fn -PathType Leaf) ) {
+  Write-Host "Gem $gem_file_name not found!" -ForegroundColor $fc
+  exit 1
+}
 
 Load-Rubies
 foreach ($ruby in $rubies) {

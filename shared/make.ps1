@@ -40,17 +40,20 @@ foreach ($ruby in $rubies) {
   if ( !(Test-Path -Path $dir_ruby$ruby$suf -PathType Container) ) { continue }
 
   Check-SetVars
-  if ($isRI2) { Check-Update } # update MSYS2
 
   # Add build system bin folders
-  $env:path += if ($ruby -ge 24) { ";$msys2\$mingw\bin;$msys2\usr\bin;" }
-                            else { ";$dk\mingw\bin;$dk\bin;"            }
+  if ($isRI2) {
+    $env:path += ";$msys2\$mingw\bin;$msys2\usr\bin;"
+    Update-MSYS2
+  } else {
+    $env:path += ";$DKw\mingw\bin;$DKw\bin;"
+  }
 
   # Out info to console
   Write-Host "`n$($dash * 75) $(Ruby-Desc)" -ForegroundColor $fc
   ruby.exe -v
   Write-Host RubyGems (gem --version)
-
+ 
   if (Get-Command Pre-Compile -errorAction SilentlyContinue) { Pre-Compile }
 
   $dest = "$dir_gem\$dest_so\$abi_vers"
@@ -68,12 +71,11 @@ foreach ($ruby in $rubies) {
     }
     # Invoke-Expression needed due to spaces in $env:b_config
     iex "ruby.exe -I. $dir_gem\$($ext.conf) $env:b_config"
-    if ($isRI2) { make -j2 } else { make }
-    $exit_code = $LastExitCode
-    if ($exit_code -ne 0) {
+    if ($isRI2) { make.exe -j2 } else { make.exe }
+    if ($LastExitCode) {
       Pop-Location
       Write-Host Make Failed! -ForegroundColor $fc
-      exit $exit_code
+      exit $LastExitCode
     }
     $fn = $so + '.so'
     Write-Host Creating $dest_so\$abi_vers\$fn
@@ -83,9 +85,7 @@ foreach ($ruby in $rubies) {
 }
 # Strip all *.so files
 [string[]]$sos = Get-ChildItem -Include *.so -Path $dir_gem\$dest_so -Recurse | select -expand fullname
-foreach ($so in $sos) {
-  &"$msys2\$mingw\bin\strip.exe" --strip-unneeded -p $so
-}
+foreach ($so in $sos) { strip.exe --strip-unneeded -p $so }
 
 # package gem
 Write-Host "`n$($dash * 60)" Packaging Gem $g_plat -ForegroundColor $fc
@@ -96,12 +96,13 @@ $env:commit_info = $commit_info
 ruby.exe $dir_ps\package_gem.rb $g_plat $rv_min $rv_max | Tee-Object -Variable bytes
 Remove-Item Env:commit_info
 Pop-Location
+if ($LastExitCode) { exit $LastExitCode }
+
 $bytes = [System.Text.Encoding]::Unicode.GetBytes($bytes)
 $t = @()
 foreach ($b in $bytes) {
   if ($b -ne 0) { $t += $b }
 }
-
 $gem_out = [System.Text.Encoding]::UTF8.GetString($t)
 
 $gem_file_name = if ($gem_out -imatch "\s+File:\s+(\S+)") { $matches[1]
@@ -117,4 +118,4 @@ if ($in_av) {
   Write-Host "`nSaving $gem_file_name as artifact" -ForegroundColor $fc
   $fn = $dir_gem + '/' + $gem_file_name
   Push-AppveyorArtifact $fn
-}
+} else { Write-Host '' }
