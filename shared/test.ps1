@@ -14,7 +14,7 @@ $dt = Get-Date -UFormat "%Y-%m-%d_%H-%M"
 #————————————————————————————————————————————————————————————————————————————————— Get-MS
 # parses $test_results and returns mS time, rounded to 1k (seconds)
 function Get-MS {
-  if ($test_results -match "(?ms)^Finished in (\d+\.\d{3})" ) {
+  if ($test_results -match "(?ms)^Finished in (\d+\.\d{2})" ) {
     return [int]([math]::Round([float]$matches[1]) * 1000)
   } else { return $null}
 }
@@ -60,7 +60,7 @@ function AV-Test($outcome) {
 #————————————————————————————————————————————————————————————— minitest results parser
 function minitest {
   Process-Log
-  if ($test_summary -eq '') {
+  if ($test_summary -eq '') { 
     $test_summary   = " Runs  Asserts  Fails  Errors  Skips  Ruby"
   }
 
@@ -77,6 +77,27 @@ function minitest {
     $ary = @("Ruby$ruby$suf") + $ruby_v
     $test_summary += "`ntesting aborted?                      {0,-11} {1,-15} ({2}" -f $ary
   }
+}
+
+function rspec_summary {
+  Process-Log
+  if ($test_summary -eq '') {
+    $test_summary   = "Examples  Fails  Ruby"
+  }
+  if ($test_results -match "(?m)^\d+ examples, \d+ failures") {
+    $ary = ($matches[0] -replace "[^\d]+", ' ').Trim().Split(' ')
+    $errors_fails = [int]$ary[1]
+    if ($in_av) { AV-Test $errors_fails }
+    $ttl_errors_fails += $errors_fails
+    $ary += @($(Ruby-Desc)) + $ruby_v
+    $test_summary += "`n  {0,4:n}    {1,4:n}   {2,-11} {3,-15} ({4}" -f $ary
+  } else {
+    if ($in_av) { AV-Test 'Failed' }
+    $ttl_errors_fails += 1000
+    $ary = @("Ruby$ruby$suf") + $ruby_v
+    $test_summary += "`ntesting aborted?                      {0,-11} {1,-15} ({2}" -f $ary
+  }
+
 }
 
 #————————————————————————————————————————————————————————————— test-unit results parser
