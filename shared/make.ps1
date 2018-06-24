@@ -34,8 +34,6 @@ Pop-Location
 
 Load-Rubies
 foreach ($ruby in $rubies) {
-  if ( $in_av -and $ruby -eq $trunk ) { Install-Trunk }
-
   # Loop if ruby version does not exist
   if ( !(Test-Path -Path $dir_ruby$ruby$suf -PathType Container) ) { continue }
 

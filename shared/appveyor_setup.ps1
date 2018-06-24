@@ -4,7 +4,7 @@
 
 $LastExitCode = $null
 
-#————————————————————————————————————————————————————————————————————————————————— Init
+#—————————————————————————————————————————————————————————————————————————————— Init
 # below sets constants & variables for use, use local_paths.ps1 for a local run
 function Init-AV-Setup {
   if ($env:APPVEYOR) {
@@ -41,12 +41,17 @@ function Init-AV-Setup {
   Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
   Make-Const rubyloco  'https://dl.bintray.com/msp-greg/ruby_trunk'
 
+  Make-Const trunk_uri_64  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z'
+  Make-Const trunk_uri_32  'https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x86.7z'
+  Make-Const trunk_32_root 'rubyinstaller-head-x86'
+  
   # Misc
   Make-Const SSL_CERT_FILE "$dflt_ruby\ssl\cert.pem"
   Make-Const ks1           'hkp://na.pool.sks-keyservers.net'
   Make-Const ks2           'hkp://pgp.mit.edu/'
   Make-Const dash          "$([char]0x2015)"
   Make-Const wc            $(New-Object System.Net.WebClient)
+  [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
   # platform dependent varis
   Make-Vari  g_plat        # gem  platform
@@ -76,13 +81,13 @@ function Init-AV-Setup {
   Make-Vari  ssl_vhash        @{}   # hash of ssl version, key is build system folder
 }
 
-#————————————————————————————————————————————————————————————————————————————————— Make-Const
+#—————————————————————————————————————————————————————————————————————————————— Make-Const
 # readonly, available in all session scripts
 function Make-Const($N, $V) {
   New-Variable -Name $N -Value $V  -Scope Script -Option AllScope, Constant
 }
 
-#————————————————————————————————————————————————————————————————————————————————— Make-Vari
+#—————————————————————————————————————————————————————————————————————————————— Make-Vari
 # available in all session scripts
 function Make-Vari($N, $V) {
   try { New-Variable -Name $N -Value $V  -Scope Script -Option AllScope -ErrorAction "Stop" }
@@ -131,7 +136,7 @@ function Check-OpenSSL {
   $bit = if ($is64) { '64 bit' } else { '32 bit'}
 
   if (!$isRI2) {
-    #————————————————————————————————————————————————————————————————————————— RubyInstaller
+    #—————————————————————————————————————————————————————————————————————— RubyInstaller
     if ($is64) { $86_64 = 'x64' ; $dk_b = 'x86_64-w64-mingw32' }
     else       { $86_64 = 'x86' ; $dk_b = 'i686-w64-mingw32'   }
 
@@ -150,7 +155,7 @@ function Check-OpenSSL {
     $env:OPENSSL_CONF  = "$DKu/mingw/ssl/openssl.cnf"
     $env:SSL_VERS = (&"$DKu/mingw/$dk_b/bin/openssl.exe" version | Out-String).Trim()
   } else {
-    #————————————————————————————————————————————————————————————————————————— RubyInstaller2
+    #—————————————————————————————————————————————————————————————————————— RubyInstaller2
     if ($is64) { $key = '77D8FA18' ; $uri = $rubyloco }
       else     { $key = 'BE8BF1C5' ; $uri = $ri2_pkgs }
 
@@ -194,16 +199,49 @@ function Check-OpenSSL {
   }
 }
 
+#—————————————————————————————————————————————————————————————————————————————— Install-Trunk
+# Loads trunk into ruby99 or ruby99-x64
+function Install-Trunk {
+  Write-Host "Installing Trunk..." -ForegroundColor $fc
+  $trunk_path = $dir_ruby + "99" + $suf
+  if ( !(Test-Path -Path $trunk_path -PathType Container) ) {
+    $trunk_uri = if ($is64) { $trunk_uri_64 } else { $trunk_uri_32 }
+    $fn = "$env:TEMP\ruby_trunk.7z"
+    Write-Host "Download started"
+    $wc.DownloadFile($trunk_uri, $fn)
+    Write-Host "Download finished"
+
+    if ( $is64 ) {
+      $tp = "-o$trunk_path"
+      &$7z x $fn $tp 1> $null
+    } else {
+      $tp = "-o" + $dir_ruby -replace '\\[^\\]*$', ''
+      Write-Host "Extracting"
+      &$7z x $fn $tp 1> $null
+      $tp = $($dir_ruby -replace '\\[^\\]*$', '') + '\' + $trunk_32_root
+      Rename-Item -Path $tp -NewName $trunk_path
+    }
+    Remove-Item  -LiteralPath $fn -Force
+#    if ( !($is64) ) {
+#      # 64 bit 7z has no root, 32 bit root is $trunk_32_root
+#      Get-ChildItem -Path $trunk_path\$trunk_32_root -Recurse | Move-Item -Destination $trunk_path
+#    }
+    Write-Host "finished" -ForegroundColor $fc
+  } else {
+    Write-Host "using existing trunk install" -ForegroundColor $fc
+  }
+  $trunk_exe = $trunk_path + "\bin\ruby.exe"
+  return &"$trunk_path\bin\ruby.exe" -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/]"
+}
+
 #——————————————————————————————————————————————————————————————————————————————  Load-Rubies
 # loads array of ruby versions to loop thru
 function Load-Rubies {
   # Make an array, like a range
   $vers = $ruby_vers_high..$ruby_vers_low
   # add current trunk
-  if ($is64) {
-    $trunk_abi = $(Install-Trunk)
-    $vers = ,99 + $vers
-  }
+  $trunk_abi = $(Install-Trunk)
+  $vers = ,99 + $vers
   $rubies = @()
   foreach ($v in $vers) {
     if ( $v -eq 19 -and $is64 ) { continue }
@@ -218,31 +256,9 @@ function Load-Rubies {
     $rubies += $v
   }
   $rv_min = $rubies[-1].Substring(0,1) + '.' + $rubies[-1].Substring(1,1)
-  $rv_max = if ($is64) {
-    $next = [int]($trunk_abi.Substring(2,1)) + 1
-    $trunk_abi.Substring(0,2) + $next
-  } else {
-    $rubies[0].Substring(0,1)  + '.' + [int]($rubies[0].Substring(1,1)) + 1
-  }
-}
-
-#—————————————————————————————————————————————————————————————————————————————— Install-Trunk
-function Install-Trunk {
-  Write-Host "Installing Trunk..." -ForegroundColor $fc
-  $trunk_path = "$dir_ruby" + "99-x64"
-  if ( !(Test-Path -Path $trunk_path -PathType Container) ) {
-    $trunk_uri = 'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z'
-    $fn = "$env:TEMP\ruby_trunk.7z"
-    $wc.DownloadFile($trunk_uri, $fn)
-    $tp = "-o$trunk_path"
-    &$7z x $fn $tp 1> $null
-    Remove-Item  -LiteralPath $fn -Force
-    Write-Host "  finished" -ForegroundColor $fc
-  } else {
-    Write-Host "  using existing trunk install" -ForegroundColor $fc
-  }
-  $trunk_exe = $dir_ruby + "99-x64\bin\ruby.exe"
-  return &$trunk_exe -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/]"
+  # set $rv_max equal to one minor version above trunk
+  $next = [int]($trunk_abi.Substring(2,1)) + 1
+  $rv_max = $trunk_abi.Substring(0,2) + $next
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Package-DevKit
@@ -289,7 +305,11 @@ function Path-Make($p) {
 
 #—————————————————————————————————————————————————————————————————————————————— Ruby-Desc
 function Ruby-Desc {
-  if ($ruby -eq '99') { return 'trunk-x64' } else { return "ruby$ruby$suf" }
+  if ($ruby -eq '99') {
+    if ($is64) { return 'trunk-x64' } else { return 'trunk' }
+  } else {
+    return "ruby$ruby$suf"
+  }
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Update-Gems
