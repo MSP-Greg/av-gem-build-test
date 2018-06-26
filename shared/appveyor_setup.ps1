@@ -77,8 +77,9 @@ function Init-AV-Setup {
   Make-Vari  exit_code          # ExitCode from last exe
   Make-Vari  ttl_errors_fails 0 # Total of tests across all versions
 
-  Make-Vari  need_refresh     $true # flag for whether to MSYS needs a refresh
-  Make-Vari  ssl_vhash        @{}   # hash of ssl version, key is build system folder
+  Make-Vari  need_refresh     $true  # flag for whether to MSYS2 needs a refresh
+  Make-Vari  msys_full        $false # true to do a full MSYS2 update -Syu
+  Make-Vari  ssl_vhash        @{}    # hash of ssl version, key is build system folder
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Make-Const
@@ -340,38 +341,40 @@ function Update-Gems($str_gems) {
 # needs paths set to MSYS2 before calling
 function Update-MSYS2 {
   if ($need_refresh) {
-    Write-Host "$($dash * 63) Updating MSYS2 / MinGW" -ForegroundColor Yellow
+    if ($msys_full) {
+      Write-Host "$($dash * 63) Updating MSYS2 / MinGW" -ForegroundColor Yellow
 
-    Write-Host "pacman.exe -Syu --noconfirm --noprogressbar" -ForegroundColor Yellow
-    pacman.exe -Syu --noconfirm --noprogressbar
+      Write-Host "pacman.exe -Syu --noconfirm --noprogressbar" -ForegroundColor Yellow
+      pacman.exe -Syu --noconfirm --noprogressbar
 
-    Write-Host "`npacman.exe -Su --noconfirm --noprogressbar" -ForegroundColor Yellow
-    pacman.exe -Su --noconfirm --noprogressbar
+      Write-Host "`npacman.exe -Su --noconfirm --noprogressbar" -ForegroundColor Yellow
+      pacman.exe -Su --noconfirm --noprogressbar
 
-    Write-Host "`nThe following two commands may not be needed, but I had issues" -ForegroundColor Yellow
-    Write-Host "retrieving a new key without them..." -ForegroundColor Yellow
+      Write-Host "`nThe following two commands may not be needed, but I had issues" -ForegroundColor Yellow
+      Write-Host "retrieving a new key without them..." -ForegroundColor Yellow
 
-    $t1 = "pacman-key --init"
-    Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
-    bash.exe -lc $t1
+      $t1 = "pacman-key --init"
+      Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
+      bash.exe -lc $t1
 
-    $t1 = "pacman-key -l"
-    Write-Host "bash.exe -lc $t1" -ForegroundColor Yellow
-    bash.exe -lc $t1
+      $t1 = "pacman-key -l"
+      Write-Host "bash.exe -lc $t1" -ForegroundColor Yellow
+      bash.exe -lc $t1
 
-    Write-Host "Clean cache & database" -ForegroundColor Yellow
-    Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
-    pacman.exe -Sc  --noconfirm
-
-<#
-    Write-Host "$($dash * 65) Updating MSYS2 / MinGW base-devel" -ForegroundColor $fc
-    $s = if ($need_refresh) { '-Sy' } else { '-S' }
-    try   { pacman.exe $s --noconfirm --needed --noprogressbar base-devel 2> $null }
-    catch { Write-Host 'Cannot update base-devel' }
-    Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
-    try   { pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null }
-    catch { Write-Host 'Cannot update toolchain' }
-#>
+      Write-Host "Clean cache & database" -ForegroundColor Yellow
+      Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
+      pacman.exe -Sc  --noconfirm
+    } else {
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW base-devel" -ForegroundColor $fc
+      $s = if ($need_refresh) { '-Sy' } else { '-S' }
+      pacman.exe $s --noconfirm --needed --noprogressbar base-devel 2> $null
+      Check-Exit 'Cannot update base-devel'
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
+      pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
+      Check-Exit 'Cannot update toolchain'
+      Write-Host "`nClean cache & database" -ForegroundColor Yellow
+      pacman.exe -Sc  --noconfirm 2> $null
+    }
     $need_refresh = $false
   }
 }

@@ -69,8 +69,15 @@ foreach ($ruby in $rubies) {
       Write-Host "options:$($env:b_config.replace("--", "`n   --"))" -ForegroundColor $fc
     }
     # Invoke-Expression needed due to spaces in $env:b_config
+    Write-Host "ruby.exe -I. $dir_gem\$($ext.conf) $env:b_config" -ForegroundColor $fc
     iex "ruby.exe -I. $dir_gem\$($ext.conf) $env:b_config"
-    if ($isRI2) { make.exe -j2 } else { make.exe }
+    if ($isRI2) {
+      Write-Host "make.exe -j2" -ForegroundColor $fc
+      make.exe -j2
+    } else {
+      Write-Host "make.exe" -ForegroundColor $fc
+      make.exe
+    }
     Check-Exit "Make Failed!" $true
 
     $fn = $so + '.so'
