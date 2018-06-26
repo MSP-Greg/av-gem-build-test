@@ -48,7 +48,7 @@ function Init-AV-Setup {
   # Misc
   Make-Const SSL_CERT_FILE "$dflt_ruby\ssl\cert.pem"
   Make-Const ks1           'hkp://na.pool.sks-keyservers.net'
-  Make-Const ks2           'hkp://pgp.mit.edu/'
+  Make-Const ks2           'hkp://pgp.mit.edu'
   Make-Const dash          "$([char]0x2015)"
   Make-Const wc            $(New-Object System.Net.WebClient)
   [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
@@ -176,14 +176,14 @@ function Check-OpenSSL {
           $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
         }
         $t1 = "pacman-key -r $key --keyserver $ks1 && pacman-key -f $key && pacman-key --lsign-key $key"
-        bash.exe -lc $t1 2> $null
+        bash.exe -lc $t1 1> $null
         $exit_code = $LastExitCode
         # below is for occasional key retrieve failure on Appveyor
         if ($exit_code) {
           Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
           # try another keyserver
           $t1 = "pacman-key -r $key --keyserver $ks2 && pacman-key -f $key && pacman-key --lsign-key $key"
-          bash.exe -lc $t1 2> $null
+          bash.exe -lc $t1 1> $null
           Check-Exit "GPG Key Lookup failed from $ks2"
         }
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
