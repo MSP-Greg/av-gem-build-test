@@ -99,7 +99,7 @@ function Make-Vari($N, $V) {
 # checks whether to exit
 function Check-Exit($msg, $pop) {
   $exit_code = $LastExitCode
-  if ($exit_code) {
+  if ($exit_code -and $exit_code -gt 0) {
     if ($pop) { Pop-Location }
     Write-Host $msg -ForegroundColor $fc
     exit $exit_code
@@ -176,14 +176,14 @@ function Check-OpenSSL {
           $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
         }
         $t1 = "pacman-key -r $key --keyserver $ks1 && pacman-key -f $key && pacman-key --lsign-key $key"
-        bash.exe -lc $t1 1> $null
+        bash.exe -lc $t1 2> $null
         $exit_code = $LastExitCode
         # below is for occasional key retrieve failure on Appveyor
-        if ($exit_code) {
+        if ($exit_code -and $exit_code -gt 0) {
           Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
           # try another keyserver
           $t1 = "pacman-key -r $key --keyserver $ks2 && pacman-key -f $key && pacman-key --lsign-key $key"
-          bash.exe -lc $t1 1> $null
+          bash.exe -lc $t1 2> $null
           Check-Exit "GPG Key Lookup failed from $ks2"
         }
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
@@ -340,6 +340,30 @@ function Update-Gems($str_gems) {
 # needs paths set to MSYS2 before calling
 function Update-MSYS2 {
   if ($need_refresh) {
+    Write-Host "$($dash * 63) Updating MSYS2 / MinGW" -ForegroundColor Yellow
+
+    Write-Host "pacman.exe -Syu --noconfirm --noprogressbar" -ForegroundColor Yellow
+    pacman.exe -Syu --noconfirm --noprogressbar
+
+    Write-Host "`npacman.exe -Su --noconfirm --noprogressbar" -ForegroundColor Yellow
+    pacman.exe -Su --noconfirm --noprogressbar
+
+    Write-Host "`nThe following two commands may not be needed, but I had issues" -ForegroundColor Yellow
+    Write-Host "retrieving a new key without them..." -ForegroundColor Yellow
+
+    $t1 = "pacman-key --init"
+    Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
+    bash.exe -lc $t1
+
+    $t1 = "pacman-key -l"
+    Write-Host "bash.exe -lc $t1" -ForegroundColor Yellow
+    bash.exe -lc $t1
+
+    Write-Host "Clean cache & database" -ForegroundColor Yellow
+    Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
+    pacman.exe -Sc  --noconfirm
+
+<#
     Write-Host "$($dash * 65) Updating MSYS2 / MinGW base-devel" -ForegroundColor $fc
     $s = if ($need_refresh) { '-Sy' } else { '-S' }
     try   { pacman.exe $s --noconfirm --needed --noprogressbar base-devel 2> $null }
@@ -347,6 +371,7 @@ function Update-MSYS2 {
     Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
     try   { pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null }
     catch { Write-Host 'Cannot update toolchain' }
+#>
     $need_refresh = $false
   }
 }
