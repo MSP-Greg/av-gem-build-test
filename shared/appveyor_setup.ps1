@@ -47,7 +47,7 @@ function Init-AV-Setup {
   
   # Misc
   Make-Const SSL_CERT_FILE "$dflt_ruby\ssl\cert.pem"
-  Make-Const ks1           'hkp://na.pool.sks-keyservers.net'
+  Make-Const ks1           'hkp://pool.sks-keyservers.net'
   Make-Const ks2           'hkp://pgp.mit.edu'
   Make-Const dash          "$([char]0x2015)"
   Make-Const wc            $(New-Object System.Net.WebClient)
