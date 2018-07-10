@@ -17,9 +17,12 @@ if (Get-Command Repo-Changes -errorAction SilentlyContinue) { Repo-Changes }
 # Write fat binary rb files if used
 if ($write_so_require) {
   foreach ($ext in $exts) {
-    $file_text = "require_relative `"#{RUBY_VERSION[/\A\d+\.\d+/]}/" + $ext.so + "`""
-    $fn = $ext.so + '.rb'
-    Out-File -FilePath $dir_gem\$dest_so\$fn -InputObject $file_text -Encoding UTF8
+    $file_text = "require_relative `"#{RUBY_VERSION[/\A\d+\.\d+/]}/" + $ext.so + "`"`n"
+    $fn = "$dir_gem\$dest_so\" + $ext.so + '.rb'
+    # Out-File -NoNewline-FilePath $dir_gem\$dest_so\$fn -InputObject $file_text -Encoding UTF8
+    # below needed to write UTF8 file without BOM
+    $Utf8NoBom = New-Object System.Text.UTF8Encoding $False
+    [IO.File]::WriteAllText($fn, $file_text, $Utf8NoBom)
   }
 }
 

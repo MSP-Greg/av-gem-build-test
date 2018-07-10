@@ -167,7 +167,8 @@ function Check-OpenSSL {
       # as of 2018-06, OpenSSL package for 2.4 is standard MSYS2/MinGW package
       # 2.5 and later use custom OpenSSL 1.1.0 packages
       if ($ruby.StartsWith('24')) {
-        pacman.exe -S --noconfirm --noprogressbar $($m_pre + 'openssl')
+        pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
+        pacman.exe -S   --noconfirm --noprogressbar $($m_pre + 'openssl')
       } else {
         $openssl = "$m_pre$openssl-1-any.pkg.tar.xz"
         if( !(Test-Path -Path $pkgs/$openssl -PathType Leaf) ) {
@@ -176,15 +177,15 @@ function Check-OpenSSL {
         if( !(Test-Path -Path $pkgs/$openssl.sig -PathType Leaf) ) {
           $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
         }
-        $t1 = "pacman-key -r $key --keyserver $ks1 && pacman-key -f $key && pacman-key --lsign-key $key"
-        bash.exe -lc $t1 2> $null
+        $t1 = "`"pacman-key -r $key --keyserver $ks1 && pacman-key -f $key && pacman-key --lsign-key $key`""
+        Retry bash.exe -lc $t1
         $exit_code = $LastExitCode
         # below is for occasional key retrieve failure on Appveyor
         if ($exit_code -and $exit_code -gt 0) {
           Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
           # try another keyserver
-          $t1 = "pacman-key -r $key --keyserver $ks2 && pacman-key -f $key && pacman-key --lsign-key $key"
-          bash.exe -lc $t1 2> $null
+          $t1 = "`"pacman-key -r $key --keyserver $ks2 && pacman-key -f $key && pacman-key --lsign-key $key`""
+          Retry bash.exe -lc $t1
           Check-Exit "GPG Key Lookup failed from $ks2"
         }
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
@@ -304,6 +305,17 @@ function Path-Make($p) {
   }
 }
 
+#—————————————————————————————————————————————————————————————————————————————— Retry
+# retries passed parameters as a command three times
+function Retry {
+  foreach ($idx in 1..3) {
+    $cmd = $args -join ' '
+    iex $cmd 2> $null
+    if ($LastExitCode -and $LastExitCode -gt 0) { Start-Sleep 1 } else { break }
+  }
+  if ($LastExitCode -and $LastExitCode -gt 0) { exit $LastExitCode }
+}
+
 #—————————————————————————————————————————————————————————————————————————————— Ruby-Desc
 function Ruby-Desc {
   if ($ruby -eq '99') {
@@ -327,7 +339,7 @@ function Update-Gems($str_gems) {
 
   if ($update)  {
     Write-Host "gem update $update -N -q -f" -ForegroundColor $fc
-    iex "gem update $update  -N -q -f"
+    iex "gem update $update -N -q -f"
   }
   if ($install) {
     Write-Host "gem install $install -N -q -f" -ForegroundColor $fc
@@ -361,9 +373,11 @@ function Update-MSYS2 {
       Write-Host "bash.exe -lc $t1" -ForegroundColor Yellow
       bash.exe -lc $t1
 
-      Write-Host "Clean cache & database" -ForegroundColor Yellow
-      Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
-      pacman.exe -Sc  --noconfirm
+      if ($in_av) {
+        Write-Host "Clean cache & database" -ForegroundColor Yellow
+        Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
+        pacman.exe -Sc  --noconfirm
+      }
     } else {
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW base-devel" -ForegroundColor $fc
       $s = if ($need_refresh) { '-Sy' } else { '-S' }
