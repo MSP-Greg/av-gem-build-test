@@ -108,7 +108,6 @@ function Check-Exit($msg, $pop) {
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Check-SetVars
-# assumes path is already set
 function Check-SetVars {
   # Set up path with Ruby bin
   $env:path = "$dir_ruby$ruby$suf\bin;" + $base_path
@@ -132,7 +131,7 @@ function Check-OpenSSL {
          elseif ($ruby -lt '22')     { 'openssl-1.0.1l'  } # 2.0, 2.1, 2.2
          elseif ($ruby -lt '24')     { 'openssl-1.0.2j'  } # 2.3
          elseif ($ruby -lt '25')     { 'openssl-1.0.2o'  } # 2.4
-         else                                    { 'openssl-1.1.0.h' } # 2.5
+         else                        { 'openssl-1.1.0.h' } # 2.5
 
   $bit = if ($is64) { '64 bit' } else { '32 bit'}
 
@@ -328,6 +327,11 @@ function Ruby-Desc {
 #—————————————————————————————————————————————————————————————————————————————— Update-Gems
 # Call with a comma separated list of gems to update / install
 function Update-Gems($str_gems) {
+  if ($env:RUBYOPT) {
+    $rubyopt = $env:RUBYOPT
+    Remove-Item Env:\RUBYOPT
+  }
+
   $install = ''
   $update  = ''
   foreach ($gem in $str_gems) {
@@ -346,6 +350,11 @@ function Update-Gems($str_gems) {
     iex "gem install $install -N -q -f"
   }
   gem cleanup
+
+  if ($rubyopt) {
+    $env:RUBYOPT = $rubyopt
+    $rubyopt = $null
+  }
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Update-MSYS2
