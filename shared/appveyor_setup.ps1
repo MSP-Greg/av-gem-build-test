@@ -105,11 +105,10 @@ function Make-Vari($N, $V) {
 #—————————————————————————————————————————————————————————————————————————————— Check-Exit
 # checks whether to exit
 function Check-Exit($msg, $pop) {
-  $exit_code = $LastExitCode
-  if ($exit_code -and $exit_code -gt 0) {
+  if ($LastExitCode -and $LastExitCode -ne 0) {
     if ($pop) { Pop-Location }
     Write-Host $msg -ForegroundColor $fc
-    exit $exit_code
+    exit 1
   }
 }
 
@@ -162,9 +161,8 @@ function Check-OpenSSL {
     $env:SSL_VERS = (&"$DKu/mingw/$dk_b/bin/openssl.exe" version | Out-String).Trim()
   } else {
     #—————————————————————————————————————————————————————————————————————— RubyInstaller2
-    if ($is64) { $key = '77D8FA18' ; $uri = $rubyloco }
-      else     { $key = 'BE8BF1C5' ; $uri = $ri2_pkgs }
-
+    if ($is64) { $key = 'D688DA4A77D8FA18' ; $uri = $rubyloco }
+      else     { $key = 'F98B8484BE8BF1C5' ; $uri = $ri2_pkgs }
     if ($ssl_vhash[$mingw] -ne $openssl) {
       Write-Host MSYS2/MinGW - $openssl $bit - Retrieving and installing -ForegroundColor $fc
       $t = $openssl
@@ -175,23 +173,30 @@ function Check-OpenSSL {
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
         pacman.exe -S   --noconfirm --noprogressbar $($m_pre + 'openssl')
       } else {
+        Write-Host Adding GPG key $key to keyring -ForegroundColor $fc
+        $t1 = "`"pacman-key -r $key --keyserver $ks1 && pacman-key -f $key && pacman-key --lsign-key $key`""
+
+        # below is for occasional key retrieve failure on Appveyor
+        if (!(Retry bash.exe -lc $t1)) {
+          Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
+          # try another keyserver
+          $t1 = "`"pacman-key -r $key --keyserver $ks2 && pacman-key -f $key && pacman-key --lsign-key $key`""
+          if (Retry bash.exe -lc $t1) {
+            Write-Host GPG key $key added -ForegroundColor $fc
+          } else {
+            "GPG Key Lookup failed from $ks2"
+            exit 1
+          }
+        } else {
+          Write-Host GPG key $key added -ForegroundColor $fc
+        }
+
         $openssl = "$m_pre$openssl-1-any.pkg.tar.xz"
         if( !(Test-Path -Path $pkgs/$openssl -PathType Leaf) ) {
           $wc.DownloadFile("$uri/$openssl"    , "$pkgs/$openssl")
         }
         if( !(Test-Path -Path $pkgs/$openssl.sig -PathType Leaf) ) {
           $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
-        }
-        $t1 = "`"pacman-key -r $key --keyserver $ks1 && pacman-key -f $key && pacman-key --lsign-key $key`""
-        Retry bash.exe -lc $t1
-        $exit_code = $LastExitCode
-        # below is for occasional key retrieve failure on Appveyor
-        if ($exit_code -and $exit_code -gt 0) {
-          Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
-          # try another keyserver
-          $t1 = "`"pacman-key -r $key --keyserver $ks2 && pacman-key -f $key && pacman-key --lsign-key $key`""
-          Retry bash.exe -lc $t1
-          Check-Exit "GPG Key Lookup failed from $ks2"
         }
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
         $pkgs_u = $pkgs.replace('\', '/')
@@ -229,10 +234,6 @@ function Install-Trunk {
       Rename-Item -Path $tp -NewName $trunk_path
     }
     Remove-Item -LiteralPath $fn -Force
-#    if ( !($is64) ) {
-#      # 64 bit 7z has no root, 32 bit root is $trunk_32_root
-#      Get-ChildItem -Path $trunk_path\$trunk_32_root -Recurse | Move-Item -Destination $trunk_path
-#    }
     Write-Host "finished" -ForegroundColor $fc
   } else {
     Write-Host "using existing trunk install" -ForegroundColor $fc
@@ -327,12 +328,17 @@ function Path-Make($p) {
 #—————————————————————————————————————————————————————————————————————————————— Retry
 # retries passed parameters as a command three times
 function Retry {
+  $a = $args[1,-1]
+  $c = $args[0]
   foreach ($idx in 1..3) {
-    $cmd = $args -join ' '
-    iex $cmd 2> $null
-    if ($LastExitCode -and $LastExitCode -gt 0) { Start-Sleep 1 } else { break }
+    & $c $a 2> $null
+    $exit_code = $?
+    if ($exit_code) { return $true } 
+    elseif ($idx -lt 3) {
+      Write-Host "  retry..."
+      Start-Sleep 1
+    } else { return $false }
   }
-  if ($LastExitCode -and $LastExitCode -gt 0) { exit $LastExitCode }
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Ruby-Desc
@@ -408,15 +414,38 @@ function Update-MSYS2 {
         pacman.exe -Sc  --noconfirm
       }
     } else {
+
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW base" -ForegroundColor $fc
+      $s = if ($need_refresh) { '-Syd' } else { '-Sd' }
+      pacman.exe $s --noconfirm --needed --noprogressbar base 2> $null
+      Check-Exit 'Cannot update base'
+
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW base-devel" -ForegroundColor $fc
-      $s = if ($need_refresh) { '-Sy' } else { '-S' }
-      pacman.exe $s --noconfirm --needed --noprogressbar base-devel 2> $null
+      pacman.exe -Sd --noconfirm --needed --noprogressbar base-devel 2> $null
       Check-Exit 'Cannot update base-devel'
+      
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
       pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
       Check-Exit 'Cannot update toolchain'
+<#
+      gpgconf --kill all
+
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW git libgpg-error libgpgme libreadline" -ForegroundColor $fc
+      pacman.exe -S --noconfirm --needed --noprogressbar libgpg-error libgpgme libreadline 2> $null
+      Check-Exit 'Cannot update libgpg-error libgpgme libreadline'
+      
+      gpgconf --kill all
+      
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW gnupg" -ForegroundColor $fc
+      pacman.exe -S --noconfirm --needed --noprogressbar gnupg 2> $null
+      Check-Exit 'Cannot update gnupg'
+
       Write-Host "`nClean cache & database" -ForegroundColor Yellow
       pacman.exe -Sc  --noconfirm 2> $null
+      
+      bash.exe -lc "gpgconf --kill all"
+      bash.exe -lc "pacman-key --refresh-keys"
+#>
     }
     $need_refresh = $false
   }

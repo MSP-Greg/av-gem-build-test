@@ -57,7 +57,7 @@ function AV-Test($outcome) {
   $std_out = Get-Std-Out
   if ($outcome -eq 'Failed') {
     $oc = if (!$test_used) { 'Ignored' } else { 'Failed' }
-    Add-AppveyorTest -Name $ruby_desc -Outcome $oc
+    Add-AppveyorTest -Name $ruby_desc -Outcome $oc `
       -StdOut $std_out -Framework "ruby" -FileName $gem_full_name
   } else {
     $oc = if ($outcome -eq 0) {'Passed'} elseif (!$test_used) {'Ignored'} else {'Failed'}
