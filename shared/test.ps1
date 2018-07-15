@@ -54,14 +54,13 @@ function Process-Log {
 #————————————————————————————————————————————————————————————————————————————————— AV-Test
 # adds a test result to Appveyor job page using Add-AppveyorTest
 function AV-Test($outcome) {
-  $ignored = @('trunk', 'trunk-JIT', 'trunk-x64', 'trunk-x64-JIT').contains($ruby_desc)
   $std_out = Get-Std-Out
   if ($outcome -eq 'Failed') {
-    $oc = if ($ignored) { 'Ignored' } else { 'Failed' }
+    $oc = if (!$test_used) { 'Ignored' } else { 'Failed' }
     Add-AppveyorTest -Name $ruby_desc -Outcome $oc
       -StdOut $std_out -Framework "ruby" -FileName $gem_full_name
   } else {
-    $oc = if ($outcome -eq 0) {'Passed'} elseif ($ignored) {'Ignored'} else {'Failed'}
+    $oc = if ($outcome -eq 0) {'Passed'} elseif (!$test_used) {'Ignored'} else {'Failed'}
     $ms = Get-MS
     Add-AppveyorTest -Name $ruby_desc -Outcome $oc -Duration $ms `
       -StdOut $std_out -Framework "ruby" -FileName $gem_full_name
@@ -72,21 +71,21 @@ function AV-Test($outcome) {
 function minitest {
   Process-Log
   if ($test_summary -eq '') { 
-    $test_summary   = " Runs  Asserts  Fails  Errors  Skips  Secs   Ruby"
+    $test_summary   = " Runs  Asserts  Fails  Errors  Skips  Secs  Ruby"
   }
 
   if ($test_results -match "(?m)^\d+ runs.+ skips") {
     $ary = ($matches[0] -replace "[^\d]+", ' ').Trim().Split(' ')
     $errors_fails = [int]$ary[2] + [int]$ary[3]
     if ($in_av) { AV-Test $errors_fails }
-    $ttl_errors_fails += $errors_fails
-    $ary += @($(Get-Secs)) + @($(Ruby-Desc)) + $ruby_v
-    $test_summary += "`n{0,4:n}    {1,4:n}   {2,4:n}    {3,4:n}    {4,4:n}  {5,6:n1}  {6,-11} {7,-15} ({8}" -f $ary
+    if ($test_use) { $ttl_errors_fails += $errors_fails }
+    $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v
+    $test_summary += "`n{0,4:n}    {1,4:n}   {2,4:n}    {3,4:n}    {4,4:n} {5,6:n1}  {6,-11} {7,-15} ({8}" -f $ary
   } else {
     if ($in_av) { AV-Test 'Failed' }
-    $ttl_errors_fails += 1000
+    if ($test_use) { $ttl_errors_fails += 1000 }
     $ary = @("Ruby$ruby$suf") + $ruby_v
-    $test_summary += "`ntesting aborted?                             {0,-11} {1,-15} ({2}" -f $ary
+    $test_summary += "`ntesting aborted?                            {0,-11} {1,-15} ({2}" -f $ary
   }
 }
 
@@ -100,7 +99,7 @@ function rspec {
     $errors_fails = [int]$ary[1]
     if ($in_av) { AV-Test $errors_fails }
     $ttl_errors_fails += $errors_fails
-    $ary += Get-Secs + @($(Ruby-Desc)) + $ruby_v
+    $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v
     $test_summary += "`n  {0,4:n}    {1,4:n}   {2,6:n1}  {3,-11} {4,-15} ({5}" -f $ary
   } else {
     if ($in_av) { AV-Test 'Failed' }
@@ -123,7 +122,7 @@ function test_unit {
     $errors_fails = [int]$ary[2] + [int]$ary[3]
     if ($in_av) { AV-Test $errors_fails }
     $ttl_errors_fails += $errors_fails
-    $ary += Get-Secs + @($(Ruby-Desc)) + $ruby_v
+    $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v
     $test_summary += "`n{0,4:n}    {1,4:n}   {2,4:n}    {3,4:n}   {4,4:n}    {5,4:n}   {6,4:n}  {7,6:n1}  {8,-11} {9,-15} ({10}" -f $ary
   } else {
     if ($in_av) { AV-Test 'Failed' }
@@ -168,6 +167,14 @@ $gem_full_path = Find-Gem
 Path-Make $dir_ps\test_logs
 del $dir_ps\test_logs\*.txt
 
+if ($is64) {
+  $test_trunk     = $trunk_x64     -ne $null
+  $test_trunk_jit = $trunk_x64_jit -ne $null
+} else {
+  $test_trunk     = $trunk     -ne $null
+  $test_trunk_jit = $trunk_jit -ne $null
+}
+
 Load-Rubies
 foreach ($ruby in $rubies) {
   # Loop if ruby version does not exist
@@ -182,27 +189,37 @@ foreach ($ruby in $rubies) {
   $ruby_desc = Ruby-Desc
   
   $orig_path = ''
-  $loops = if ($ruby -eq '99') { @(1,2) } else { @(1) }
+  $loops = if ($ruby -eq '99' -and $test_trunk -and $test_trunk_jit )
+    { @(1,2) } else { @(1) }
   
   foreach ($loop in $loops) {
     if ($loop -eq 1) {
-      if ( !($in_av) ) { gem uninstall $gem_name -x -a }
-      gem install $gem_full_path -Nl
-
-      if ($ruby -eq '99') {
+      if ($ruby -eq '99' -and $test_trunk_jit) {
         $ruby_desc += '-JIT'
         $env:RUBYOPT = '--jit'
         $orig_path = $env:path
         $env:path += ";$msys2\$mingw\bin;$msys2\usr\bin;"
       }
     } else {
-      Remove-Item Env:\RUBYOPT
+      if ($env:RUBYOPT) { Remove-Item Env:\RUBYOPT }
       $ruby_desc = Ruby-Desc
       $env:path = $orig_path
     }
-
-    Write-Host "`n$($dash * 75) Testing $ruby_desc" -ForegroundColor $fc
     
+    $test_use = switch ($ruby_desc) {
+      'trunk'         { $trunk         }
+      'trunk_jit'     { $trunk_jit     }
+      'trunk_x64'     { $trunk_x64     }
+      'trunk_x64_jit' { $trunk_x64_jit }
+      default         { $true          }
+    }
+    
+    Write-Host "`n$($dash * 75) Testing $ruby_desc" -ForegroundColor $fc
+    if ($loop -eq 1) {
+      if (!$in_av)  { gem uninstall $gem_name -x -a }
+      gem install $gem_full_path -Nl
+    }
+
     # Find where gem was installed - default or user
     $rake_dir = $gem_dflt + '/gems/' + $gem_full_name
     if ( !(Test-Path -Path $rake_dir -PathType Container) ) {
@@ -228,10 +245,11 @@ $fn_log = "$dir_ps\test_logs\test_logs-$g_plat" + ".7z"
 
 if ($in_av) {
   Push-AppveyorArtifact $fn_log
-  $av_msg =  " $gem_full_name Test Summary".PadLeft(100, $dash)
-  $av_msg += "`n$test_summary"
-  $av_msg += "`n`nCommit Info: $commit_info`n"
-  Add-AppveyorMessage -Message "Test Summary" -Details $av_msg
+  $details =  " $gem_full_name Test Summary".PadLeft(100, $dash)
+  $details += "`n$test_summary"
+  $details += "`n`nCommit Info: $commit_info`n"
+  $msg = if ($suf -eq '') { "Test Summary 32 bit" } else { "Test Summary 64 bit" }
+  Add-AppveyorMessage -Message $msg -Details $details
 }
 
 # write test summary info at end of testing

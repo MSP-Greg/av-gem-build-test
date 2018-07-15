@@ -53,7 +53,7 @@ function Init-AV-Setup {
   Make-Const wc            $(New-Object System.Net.WebClient)
   [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
-  # platform dependent varis
+  # platform dependent varis (32 or 64)
   Make-Vari  g_plat        # gem  platform
   Make-Vari  r_plat        # ruby platform
   Make-Vari  mingw         # mingw32 or mingw64
@@ -80,6 +80,12 @@ function Init-AV-Setup {
   Make-Vari  need_refresh     $true  # flag for whether to MSYS2 needs a refresh
   Make-Vari  msys_full        $false # true to do a full MSYS2 update -Syu
   Make-Vari  ssl_vhash        @{}    # hash of ssl version, key is build system folder
+
+  # varis for trunk
+  Make-Vari  run_trunk
+  Make-Vari  test_trunk
+  Make-Vari  test_trunk_jit
+  Make-Vari  test_use
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Make-Const
@@ -222,7 +228,7 @@ function Install-Trunk {
       $tp = $($dir_ruby -replace '\\[^\\]*$', '') + '\' + $trunk_32_root
       Rename-Item -Path $tp -NewName $trunk_path
     }
-    Remove-Item  -LiteralPath $fn -Force
+    Remove-Item -LiteralPath $fn -Force
 #    if ( !($is64) ) {
 #      # 64 bit 7z has no root, 32 bit root is $trunk_32_root
 #      Get-ChildItem -Path $trunk_path\$trunk_32_root -Recurse | Move-Item -Destination $trunk_path
@@ -238,11 +244,20 @@ function Install-Trunk {
 #——————————————————————————————————————————————————————————————————————————————  Load-Rubies
 # loads array of ruby versions to loop thru
 function Load-Rubies {
+
+  $run_trunk = if ($is64) {
+    ($trunk_x64 -ne $null) -or ($trunk_x64_JIT -ne $null)
+  } else {
+    ($trunk     -ne $null) -or ($trunk_JIT     -ne $null)
+  }
+
   # Make an array, like a range
   $vers = $ruby_vers_high..$ruby_vers_low
-  # add current trunk
-  $trunk_abi = $(Install-Trunk)
-  $vers = ,99 + $vers
+  if ($run_trunk) {
+    # add current trunk
+    $trunk_abi = $(Install-Trunk)
+    $vers = ,99 + $vers
+  }
   $rubies = @()
   foreach ($v in $vers) {
     if ( $v -eq 19 -and $is64 ) { continue }
@@ -257,9 +272,14 @@ function Load-Rubies {
     $rubies += $v
   }
   $rv_min = $rubies[-1].Substring(0,1) + '.' + $rubies[-1].Substring(1,1)
-  # set $rv_max equal to one minor version above trunk
-  $next = [int]($trunk_abi.Substring(2,1)) + 1
-  $rv_max = $trunk_abi.Substring(0,2) + $next
+  if ($run_trunk) {
+    # set $rv_max equal to one minor version above trunk
+    $next = [int]($trunk_abi.Substring(2,1)) + 1
+    $rv_max = $trunk_abi.Substring(0,2) + $next
+  } else {
+    $next = [int]($rubies[0].Substring(1,1)) + 1
+    $rv_max = $rubies[0].Substring(0,1) + '.' + $next
+  }
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Package-DevKit
