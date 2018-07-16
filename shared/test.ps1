@@ -10,6 +10,10 @@ Make-Vari test_summary  ''
 Make-Vari gem_full      ''
 Make-Vari ruby_desc     ''
 
+Make-Vari  test_trunk
+Make-Vari  test_trunk_jit
+Make-Vari  test_use
+
 $dt = Get-Date -UFormat "%Y-%m-%d_%H-%M"
 
 #————————————————————————————————————————————————————————————————————————————————— Get-Secs
@@ -208,9 +212,9 @@ foreach ($ruby in $rubies) {
     
     $test_use = switch ($ruby_desc) {
       'trunk'         { $trunk         }
-      'trunk_jit'     { $trunk_jit     }
-      'trunk_x64'     { $trunk_x64     }
-      'trunk_x64_jit' { $trunk_x64_jit }
+      'trunk-JIT'     { $trunk_jit     }
+      'trunk-x64'     { $trunk_x64     }
+      'trunk-x64-JIT' { $trunk_x64_jit }
       default         { $true          }
     }
     

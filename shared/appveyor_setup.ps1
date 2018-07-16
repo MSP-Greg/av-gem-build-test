@@ -83,9 +83,6 @@ function Init-AV-Setup {
 
   # varis for trunk
   Make-Vari  run_trunk
-  Make-Vari  test_trunk
-  Make-Vari  test_trunk_jit
-  Make-Vari  test_use
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Make-Const
