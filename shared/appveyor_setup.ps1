@@ -186,7 +186,7 @@ function Check-OpenSSL {
           }
         } else {
           Write-Host GPG key $key retrieved -ForegroundColor $fc
-          bash.exe -lc "pacman-key -f $key && pacman-key --lsign-key $key"
+          bash.exe -lc "pacman-key -f $key && pacman-key --lsign-key $key" 2> $null
           Write-Host GPG key $key added -ForegroundColor $fc
         }
 
