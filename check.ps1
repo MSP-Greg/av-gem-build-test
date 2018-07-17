@@ -17,13 +17,13 @@ Update-MSYS2
 $key = 'D688DA4A77D8FA18'
 
 Write-Host Adding GPG key $key to keyring -ForegroundColor $fc
-$t1 = "`"pacman-key -r $key --keyserver $ks1 && pacman-key -f $key && pacman-key --lsign-key $key`""
+$t1 = "`"pacman-key -r $key --keyserver $ks1`""
 
 # below is for occasional key retrieve failure on Appveyor
 if (!(Retry bash.exe -lc $t1)) {
   Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
   # try another keyserver
-  $t1 = "`"pacman-key -r $key --keyserver $ks2 && pacman-key -f $key && pacman-key --lsign-key $key`""
+  $t1 = "`"pacman-key -r $key --keyserver`""
   if (Retry bash.exe -lc $t1) {
     Write-Host GPG key $key added -ForegroundColor $fc
   } else {
@@ -31,6 +31,8 @@ if (!(Retry bash.exe -lc $t1)) {
     exit 1
   }
 } else {
+  Write-Host GPG key $key retrieved -ForegroundColor $fc
+  bash.exe -lc "pacman-key -f $key && pacman-key --lsign-key $key"
   Write-Host GPG key $key added -ForegroundColor $fc
 }
 

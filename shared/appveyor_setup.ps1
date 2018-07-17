@@ -171,13 +171,13 @@ function Check-OpenSSL {
         pacman.exe -S   --noconfirm --noprogressbar $($m_pre + 'openssl')
       } else {
         Write-Host Adding GPG key $key to keyring -ForegroundColor $fc
-        $t1 = "`"pacman-key -r $key --keyserver $ks1 && pacman-key -f $key && pacman-key --lsign-key $key`""
+        $t1 = "`"pacman-key -r $key --keyserver $ks1`""
 
         # below is for occasional key retrieve failure on Appveyor
         if (!(Retry bash.exe -lc $t1)) {
           Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
           # try another keyserver
-          $t1 = "`"pacman-key -r $key --keyserver $ks2 && pacman-key -f $key && pacman-key --lsign-key $key`""
+          $t1 = "`"pacman-key -r $key --keyserver`""
           if (Retry bash.exe -lc $t1) {
             Write-Host GPG key $key added -ForegroundColor $fc
           } else {
@@ -185,6 +185,8 @@ function Check-OpenSSL {
             exit 1
           }
         } else {
+          Write-Host GPG key $key retrieved -ForegroundColor $fc
+          bash.exe -lc "pacman-key -f $key && pacman-key --lsign-key $key"
           Write-Host GPG key $key added -ForegroundColor $fc
         }
 
@@ -328,7 +330,7 @@ function Retry {
   $a = $args[1,-1]
   $c = $args[0]
   foreach ($idx in 1..3) {
-    & $c $a
+    & $c $a 2> $null
     $exit_code = $?
     if ($exit_code) { return $true } 
     elseif ($idx -lt 3) {
