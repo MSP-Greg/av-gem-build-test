@@ -5,8 +5,10 @@ cd C:\Greg\GitHub\av-gem-build-test
 
 . $PSScriptRoot\shared\appveyor_setup.ps1 $args[0]
 
-&$7z a shared .\shared
-Push-AppveyorArtifact shared.7z
+if ($in_av) {
+  &$7z a shared .\shared
+  Push-AppveyorArtifact shared.7z
+}
 
 $env:path = "$msys2\$mingw\bin;$msys2\usr\bin;" + $env:path
 

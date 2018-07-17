@@ -328,14 +328,15 @@ function Retry {
   $a = $args[1,-1]
   $c = $args[0]
   foreach ($idx in 1..3) {
-    & $c $a 2> $null
+    & $c $a
     $exit_code = $?
     if ($exit_code) { return $true } 
     elseif ($idx -lt 3) {
       Write-Host "  retry..."
       Start-Sleep 1
-    } else { return $false }
+    }
   }
+  return $false
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Ruby-Desc
