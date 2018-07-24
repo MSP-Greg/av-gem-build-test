@@ -10,7 +10,7 @@ function Init-AV-Setup {
   if ($env:APPVEYOR) {
     $pkgs_temp = "$PSScriptRoot/../packages"
     Path-Make $pkgs_temp
-  
+
     Make-Const dflt_ruby 'C:\ruby25-x64'
     Make-Const in_av     $true
 
@@ -44,10 +44,11 @@ function Init-AV-Setup {
   Make-Const trunk_uri_64  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z'
   Make-Const trunk_uri_32  'https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x86.7z'
   Make-Const trunk_32_root 'rubyinstaller-head-x86'
-  
+
   # Misc
   Make-Const SSL_CERT_FILE "$dflt_ruby\ssl\cert.pem"
   Make-Const ks1           'hkp://pool.sks-keyservers.net'
+  #Make-Const ks1           'hkp://pool.sks-keyservers.no'
   Make-Const ks2           'hkp://pgp.mit.edu'
   Make-Const dash          "$([char]0x2015)"
   Make-Const wc            $(New-Object System.Net.WebClient)
@@ -160,8 +161,9 @@ function Check-OpenSSL {
     #—————————————————————————————————————————————————————————————————————— RubyInstaller2
     if ($is64) { $key = 'D688DA4A77D8FA18' ; $uri = $rubyloco }
       else     { $key = 'F98B8484BE8BF1C5' ; $uri = $ri2_pkgs }
+
     if ($ssl_vhash[$mingw] -ne $openssl) {
-      Write-Host MSYS2/MinGW - $openssl $bit - Retrieving and installing -ForegroundColor $fc
+      Write-Host MSYS2/MinGW - $openssl $bit - Retrieving and Installing -ForegroundColor $fc
       $t = $openssl
 
       # as of 2018-06, OpenSSL package for 2.4 is standard MSYS2/MinGW package
@@ -170,23 +172,30 @@ function Check-OpenSSL {
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
         pacman.exe -S   --noconfirm --noprogressbar $($m_pre + 'openssl')
       } else {
-        Write-Host Adding GPG key $key to keyring -ForegroundColor $fc
-        $t1 = "`"pacman-key -r $key --keyserver $ks1`""
 
+        #———————————————————— ——————————————————————————————————————————————— Add GPG key
+        Write-Host "`ntry retrieving key" -ForegroundColor Yellow
+
+        $okay = Retry bash.exe -c `"pacman-key -r $key --keyserver $ks1`"
         # below is for occasional key retrieve failure on Appveyor
-        if (!(Retry bash.exe -lc $t1)) {
-          Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
+        if (!$okay) {
+          Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor Yellow
           # try another keyserver
-          $t1 = "`"pacman-key -r $key --keyserver $ks2`""
-          if (!(Retry bash.exe -lc $t1)) {
-            "GPG Key Lookup failed from $ks2"
+          $okay = Retry bash.exe -c `"pacman-key -r $key --keyserver $ks2`"
+          if (!$okay) {
+            Write-Host GPG Key Lookup failed from $ks2 -ForegroundColor Yellow
+            if ($in_av) {
+              Update-AppveyorBuild -Message "keyserver retrieval failed"
+            }
             exit 1
-          }
-        }
+          } else { Write-Host GPG Key Lookup succeeded from $ks2 }
+        }   else { Write-Host GPG Key Lookup succeeded from $ks1 }
+        Write-Host "signing key" -ForegroundColor Yellow
+        bash.exe -c "pacman-key -f $key && pacman-key --lsign-key $key" 2>$null
 
-        Write-Host GPG key $key retrieved -ForegroundColor $fc
-        bash.exe -lc "pacman-key -f $key && pacman-key --lsign-key $key" 2> $null
-        Write-Host GPG key $key added -ForegroundColor $fc
+        if ( !(Test-Path -Path $pkgs -PathType Container) ) {
+          New-Item -Path $pkgs -ItemType Directory 1> $null
+        }
 
         $openssl = "$m_pre$openssl-1-any.pkg.tar.xz"
         if( !(Test-Path -Path $pkgs/$openssl -PathType Leaf) ) {
@@ -195,6 +204,7 @@ function Check-OpenSSL {
         if( !(Test-Path -Path $pkgs/$openssl.sig -PathType Leaf) ) {
           $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
         }
+
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
         $pkgs_u = $pkgs.replace('\', '/')
         pacman.exe -Udd --noconfirm --noprogressbar $pkgs_u/$openssl
@@ -325,17 +335,31 @@ function Path-Make($p) {
 #—————————————————————————————————————————————————————————————————————————————— Retry
 # retries passed parameters as a command three times
 function Retry {
-  $a = $args[1,-1]
+  $err_action = $ErrorActionPreference
+  $ErrorActionPreference = "Stop"
+  $a = $args[1..($args.Length-1)]
   $c = $args[0]
+  # Write-Host $c $a -ForegroundColor $fc
   foreach ($idx in 1..3) {
-    & $c $a 2> $null
-    $exit_code = $?
-    if ($exit_code) { return $true } 
-    elseif ($idx -lt 3) {
-      Write-Host "  retry..."
+    $Error.clear()
+    try {
+      &$c $a # 2> $null
+      if ($? -and ($Error.length -eq 0 -or $Error.length -eq $null)) {
+        $ErrorActionPreference = $err_action
+        return $true
+      }
+    } catch {
+      if (!($Error[0] -match 'fail|error')) {
+        $ErrorActionPreference = $err_action
+        return $true
+      }
+    }
+    if ($idx -lt 3) {
+      Write-Host "  retry"
       Start-Sleep 1
     }
   }
+  $ErrorActionPreference = $err_action
   return $false
 }
 
@@ -395,16 +419,20 @@ function Update-MSYS2 {
       Write-Host "`npacman.exe -Su --noconfirm --noprogressbar" -ForegroundColor Yellow
       pacman.exe -Su --noconfirm --noprogressbar
 
-      Write-Host "`nThe following two commands may not be needed, but I had issues" -ForegroundColor Yellow
+      Write-Host "`nThe following commands may not be needed, but I had issues" -ForegroundColor Yellow
       Write-Host "retrieving a new key without them..." -ForegroundColor Yellow
 
       $t1 = "pacman-key --init"
       Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
-      bash.exe -lc $t1
+      bash.exe -c $t1
 
-      $t1 = "pacman-key -l"
+      $t1 = "pacman-key --populate msys2"
+      Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
+      bash.exe -c $t1
+
+      $t1 = "pacman-key --refresh-keys"
       Write-Host "bash.exe -lc $t1" -ForegroundColor Yellow
-      bash.exe -lc $t1
+      bash.exe -c $t1
 
       if ($in_av) {
         Write-Host "Clean cache & database" -ForegroundColor Yellow
@@ -412,38 +440,52 @@ function Update-MSYS2 {
         pacman.exe -Sc  --noconfirm
       }
     } else {
-
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW base" -ForegroundColor $fc
-      $s = if ($need_refresh) { '-Syd' } else { '-Sd' }
-      pacman.exe $s --noconfirm --needed --noprogressbar base 2> $null
+      pacman.exe -Sy --noconfirm --needed --noprogressbar base 2> $null
       Check-Exit 'Cannot update base'
 
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW base-devel" -ForegroundColor $fc
-      pacman.exe -Sd --noconfirm --needed --noprogressbar base-devel 2> $null
+      pacman.exe -S --noconfirm --needed --noprogressbar base-devel 2> $null
       Check-Exit 'Cannot update base-devel'
-      
+
+      Write-Host "$($dash * 65) Updating gnupg `& depends" -ForegroundColor $fc
+
+      Write-Host "Updating gnupg extended dependencies" -ForegroundColor Yellow
+      #pacman.exe -S --noconfirm --needed --noprogressbar brotli ca-certificates glib2 gmp heimdal-libs icu libasprintf libcrypt
+      #pacman.exe -S --noconfirm --needed --noprogressbar libdb libedit libexpat libffi libgettextpo libhogweed libidn2 liblzma
+      pacman.exe -S --noconfirm --needed --noprogressbar libmetalink libnettle libnghttp2 libopenssl libp11-kit libpcre libpsl 2> $null
+      #pacman.exe -S --noconfirm --needed --noprogressbar libssh2 libtasn1 libunistring libxml2 libxslt openssl p11-kit 
+
+      Write-Host "Updating gnupg package dependencies" -ForegroundColor Yellow
+      # below are listed gnupg dependencies
+      pacman.exe -S --noconfirm --needed --noprogressbar bzip2 libassuan libbz2 libcurl libgcrypt libgnutls libgpg-error libiconv 2> $null
+      pacman.exe -S --noconfirm --needed --noprogressbar libintl libksba libnpth libreadline libsqlite nettle pinentry zlib 2> $null
+
+      Write-Host "Updating gnupg" -ForegroundColor Yellow
+      pacman.exe -S --noconfirm --needed --noprogressbar gnupg 2> $null
+
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
       pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
       Check-Exit 'Cannot update toolchain'
-<#
-      gpgconf --kill all
 
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW git libgpg-error libgpgme libreadline" -ForegroundColor $fc
-      pacman.exe -S --noconfirm --needed --noprogressbar libgpg-error libgpgme libreadline 2> $null
-      Check-Exit 'Cannot update libgpg-error libgpgme libreadline'
-      
-      gpgconf --kill all
-      
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW gnupg" -ForegroundColor $fc
-      pacman.exe -S --noconfirm --needed --noprogressbar gnupg 2> $null
-      Check-Exit 'Cannot update gnupg'
+      if ($in_av) {
+        Write-Host "Clean cache & database" -ForegroundColor Yellow
+        Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
+        pacman.exe -Sc  --noconfirm
+      }
 
-      Write-Host "`nClean cache & database" -ForegroundColor Yellow
-      pacman.exe -Sc  --noconfirm 2> $null
-      
-      bash.exe -lc "gpgconf --kill all"
-      bash.exe -lc "pacman-key --refresh-keys"
-#>
+      $t1 = "pacman-key --init"
+      Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
+      bash.exe -c $t1 2> $null
+
+      $t1 = "pacman-key --populate msys2"
+      Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
+      bash.exe -c $t1 2> $null
+
+      $t1 = "pacman-key --refresh-keys"
+      Write-Host "bash.exe -lc $t1" -ForegroundColor Yellow
+      bash.exe -c $t1 2> $null
+
     }
     $need_refresh = $false
   }
@@ -455,7 +497,7 @@ Init-AV-Setup
 [int]$temp = $args[0]
 if ($temp -eq 32) {
   $r_plat = 'i386-mingw32' ; $mingw  = 'mingw32'
-  $g_plat =  'x86-mingw32' ; $m_pre  = 'mingw-w64-i686-' 
+  $g_plat =  'x86-mingw32' ; $m_pre  = 'mingw-w64-i686-'
   $suf    = ''             ; $DKw    = $DK32w
   $is64   = $false
 } elseif ($temp -eq 64) {
