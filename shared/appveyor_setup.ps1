@@ -177,18 +177,16 @@ function Check-OpenSSL {
         if (!(Retry bash.exe -lc $t1)) {
           Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor $fc
           # try another keyserver
-          $t1 = "`"pacman-key -r $key --keyserver`""
-          if (Retry bash.exe -lc $t1) {
-            Write-Host GPG key $key added -ForegroundColor $fc
-          } else {
+          $t1 = "`"pacman-key -r $key --keyserver $ks2`""
+          if (!(Retry bash.exe -lc $t1)) {
             "GPG Key Lookup failed from $ks2"
             exit 1
           }
-        } else {
-          Write-Host GPG key $key retrieved -ForegroundColor $fc
-          bash.exe -lc "pacman-key -f $key && pacman-key --lsign-key $key" 2> $null
-          Write-Host GPG key $key added -ForegroundColor $fc
         }
+
+        Write-Host GPG key $key retrieved -ForegroundColor $fc
+        bash.exe -lc "pacman-key -f $key && pacman-key --lsign-key $key" 2> $null
+        Write-Host GPG key $key added -ForegroundColor $fc
 
         $openssl = "$m_pre$openssl-1-any.pkg.tar.xz"
         if( !(Test-Path -Path $pkgs/$openssl -PathType Leaf) ) {

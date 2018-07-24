@@ -10,9 +10,9 @@ Make-Vari test_summary  ''
 Make-Vari gem_full      ''
 Make-Vari ruby_desc     ''
 
-Make-Vari  test_trunk
-Make-Vari  test_trunk_jit
-Make-Vari  test_use
+Make-Vari test_trunk
+Make-Vari test_trunk_jit
+Make-Vari test_use
 
 $dt = Get-Date -UFormat "%Y-%m-%d_%H-%M"
 
@@ -88,7 +88,7 @@ function minitest {
   } else {
     if ($in_av) { AV-Test 'Failed' }
     if ($test_use) { $ttl_errors_fails += 1000 }
-    $ary = @("Ruby$ruby$suf") + $ruby_v
+    $ary = @($(Ruby-Desc)) + $ruby_v
     $test_summary += "`ntesting aborted?                            {0,-11} {1,-15} ({2}" -f $ary
   }
 }
@@ -108,7 +108,7 @@ function rspec {
   } else {
     if ($in_av) { AV-Test 'Failed' }
     $ttl_errors_fails += 1000
-    $ary = @("Ruby$ruby$suf") + $ruby_v
+    $ary = @($(Ruby-Desc)) + $ruby_v
     $test_summary += "`ntesting aborted?                      {0,-11} {1,-15} ({2}" -f $ary
   }
 }
@@ -130,7 +130,7 @@ function test_unit {
     $test_summary += "`n{0,4:n}    {1,4:n}   {2,4:n}    {3,4:n}   {4,4:n}    {5,4:n}   {6,4:n}  {7,6:n1}  {8,-11} {9,-15} ({10}" -f $ary
   } else {
     if ($in_av) { AV-Test 'Failed' }
-    $ary = @("Ruby$ruby$suf") + $ruby_v
+    $ary = @($(Ruby-Desc)) + $ruby_v
     $ttl_errors_fails += 1000
     $test_summary += "`ntesting aborted?                                             {0,-11} {1,-15} ({2}" -f $ary
   }
