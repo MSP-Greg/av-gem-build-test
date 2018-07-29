@@ -4,12 +4,11 @@ cd C:\Greg\GitHub\av-gem-build-test
 #>
 
 . $PSScriptRoot\shared\appveyor_setup.ps1 $args[0]
-<#
-if ($in_av) {
+
+if ( $in_av -and ($(git.exe branch) -match '\* master') ) {
   &$7z a shared .\shared
   Push-AppveyorArtifact shared.7z
 }
-#>
 
 $ruby = '99'
 if ($in_av) { Install-Trunk }
