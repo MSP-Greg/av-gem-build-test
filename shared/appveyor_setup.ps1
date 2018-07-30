@@ -349,7 +349,7 @@ function Retry {
         return $true
       }
     } catch {
-      if (!($Error[0] -match 'fail|error')) {
+      if (!($Error[0] -match 'fail|error|Remote key not fetched correctly')) {
         $ErrorActionPreference = $err_action
         return $true
       }
@@ -419,26 +419,6 @@ function Update-MSYS2 {
       Write-Host "`npacman.exe -Su --noconfirm --noprogressbar" -ForegroundColor Yellow
       pacman.exe -Su --noconfirm --noprogressbar
 
-      Write-Host "`nThe following commands may not be needed, but I had issues" -ForegroundColor Yellow
-      Write-Host "retrieving a new key without them..." -ForegroundColor Yellow
-
-      $t1 = "pacman-key --init"
-      Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
-      bash.exe -c $t1
-
-      $t1 = "pacman-key --populate msys2"
-      Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
-      bash.exe -c $t1
-
-      $t1 = "pacman-key --refresh-keys"
-      Write-Host "bash.exe -lc $t1" -ForegroundColor Yellow
-      bash.exe -c $t1
-
-      if ($in_av) {
-        Write-Host "Clean cache & database" -ForegroundColor Yellow
-        Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
-        pacman.exe -Sc  --noconfirm
-      }
     } else {
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW base" -ForegroundColor $fc
       pacman.exe -Sy --noconfirm --needed --noprogressbar base 2> $null
@@ -467,25 +447,11 @@ function Update-MSYS2 {
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
       pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
       Check-Exit 'Cannot update toolchain'
-
-      if ($in_av) {
-        Write-Host "Clean cache & database" -ForegroundColor Yellow
-        Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
-        pacman.exe -Sc  --noconfirm
-      }
-
-      $t1 = "pacman-key --init"
-      Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
-      bash.exe -c $t1 2> $null
-
-      $t1 = "pacman-key --populate msys2"
-      Write-Host "`nbash.exe -lc $t1" -ForegroundColor Yellow
-      bash.exe -c $t1 2> $null
-
-      $t1 = "pacman-key --refresh-keys"
-      Write-Host "bash.exe -lc $t1" -ForegroundColor Yellow
-      bash.exe -c $t1 2> $null
-
+    }
+    if ($in_av) {
+      Write-Host "Clean cache & database" -ForegroundColor Yellow
+      Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
+      pacman.exe -Sc  --noconfirm
     }
     $need_refresh = $false
   }
