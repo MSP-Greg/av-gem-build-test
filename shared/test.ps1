@@ -102,12 +102,12 @@ function rspec {
     $ary = ($matches[0] -replace "[^\d]+", ' ').Trim().Split(' ')
     $errors_fails = [int]$ary[1]
     if ($in_av) { AV-Test $errors_fails }
-    $ttl_errors_fails += $errors_fails
+    if ($test_use) { $ttl_errors_fails += $errors_fails }
     $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v
     $test_summary += "`n  {0,4:n}    {1,4:n}   {2,6:n1}  {3,-11} {4,-15} ({5}" -f $ary
   } else {
     if ($in_av) { AV-Test 'Failed' }
-    $ttl_errors_fails += 1000
+    if ($test_use) { $ttl_errors_fails += 1000 }
     $ary = @($(Ruby-Desc)) + $ruby_v
     $test_summary += "`ntesting aborted?                      {0,-11} {1,-15} ({2}" -f $ary
   }
@@ -125,13 +125,13 @@ function test_unit {
     $ary = ($matches[0] -replace "[^\d]+", ' ').Trim().Split(' ')
     $errors_fails = [int]$ary[2] + [int]$ary[3]
     if ($in_av) { AV-Test $errors_fails }
-    $ttl_errors_fails += $errors_fails
+    if ($test_use) { $ttl_errors_fails += $errors_fails }
     $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v
     $test_summary += "`n{0,4:n}    {1,4:n}   {2,4:n}    {3,4:n}   {4,4:n}    {5,4:n}   {6,4:n}  {7,6:n1}  {8,-11} {9,-15} ({10}" -f $ary
   } else {
     if ($in_av) { AV-Test 'Failed' }
+    if ($test_use) { $ttl_errors_fails += 1000 }
     $ary = @($(Ruby-Desc)) + $ruby_v
-    $ttl_errors_fails += 1000
     $test_summary += "`ntesting aborted?                                             {0,-11} {1,-15} ({2}" -f $ary
   }
 }
