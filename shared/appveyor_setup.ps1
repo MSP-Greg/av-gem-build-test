@@ -444,9 +444,9 @@ function Update-MSYS2 {
       Write-Host "Updating gnupg" -ForegroundColor Yellow
       pacman.exe -S --noconfirm --needed --noprogressbar gnupg 2> $null
 
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
-      pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
-      Check-Exit 'Cannot update toolchain'
+#      Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
+#      pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
+#      Check-Exit 'Cannot update toolchain'
     }
     if ($in_av) {
       Write-Host "Clean cache & database" -ForegroundColor Yellow
