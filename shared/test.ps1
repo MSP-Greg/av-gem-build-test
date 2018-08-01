@@ -4,6 +4,8 @@
 
 if ($exit_code) { exit $exit_code }
 
+Make-Const enable_jit $false
+
 Make-Vari log_name      ''
 Make-Vari test_results  ''
 Make-Vari test_summary  ''
@@ -173,10 +175,10 @@ del $dir_ps\test_logs\*.txt
 
 if ($is64) {
   $test_trunk     = $trunk_x64     -ne $null
-  $test_trunk_jit = $trunk_x64_jit -ne $null
+  $test_trunk_jit = ($trunk_x64_jit -ne $null) -and $enable_jit
 } else {
   $test_trunk     = $trunk     -ne $null
-  $test_trunk_jit = $trunk_jit -ne $null
+  $test_trunk_jit = ($trunk_jit -ne $null) -and $enable_jit
 }
 
 Load-Rubies
