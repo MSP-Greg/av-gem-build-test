@@ -5,4 +5,5 @@ build: off
 deploy: off
 
 test_script:
+  - dir C:\msys64\var\lib\pacman\sync
   - ps: .\check.ps1 64

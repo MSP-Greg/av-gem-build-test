@@ -424,6 +424,10 @@ function Update-MSYS2 {
       pacman.exe -Sy --noconfirm --needed --noprogressbar base 2> $null
       Check-Exit 'Cannot update base'
 
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW db gdbm libgdbm libreadline ncurses" -ForegroundColor $fc
+      pacman.exe -Sy --noconfirm --needed --noprogressbar db gdbm libgdbm libreadline ncurses 2> $null
+      Check-Exit 'Cannot update db gdbm libgdbm libreadline ncurses'
+      
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW base-devel" -ForegroundColor $fc
       pacman.exe -S --noconfirm --needed --noprogressbar base-devel 2> $null
       Check-Exit 'Cannot update base-devel'
