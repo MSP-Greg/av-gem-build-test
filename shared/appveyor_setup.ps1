@@ -420,8 +420,12 @@ function Update-MSYS2 {
       pacman.exe -Su --noconfirm --noprogressbar
 
     } else {
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW -Syu" -ForegroundColor $fc
+      pacman.exe -Syu --noconfirm --needed --noprogressbar 2> $null
+      Check-Exit 'Cannot update with -Syu'
+
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW base" -ForegroundColor $fc
-      pacman.exe -Sy --noconfirm --needed --noprogressbar base 2> $null
+      pacman.exe -S --noconfirm --needed --noprogressbar base 2> $null
       Check-Exit 'Cannot update base'
 
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW db gdbm libgdbm libreadline ncurses" -ForegroundColor $fc
