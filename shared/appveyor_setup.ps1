@@ -11,7 +11,7 @@ function Init-AV-Setup {
     $pkgs_temp = "$PSScriptRoot/../packages"
     Path-Make $pkgs_temp
 
-    Make-Const dflt_ruby 'C:\ruby25-x64'
+    Make-Const dflt_ruby 'C:\Ruby25-x64'
     Make-Const in_av     $true
 
     # MinGW & Base Ruby
@@ -26,7 +26,7 @@ function Init-AV-Setup {
     Make-Const pkgs      "$( Convert-Path $pkgs_temp )"
 
     # Use simple base path without all Appveyor additions
-    Make-Const base_path 'C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\Program Files\Git\cmd;'
+    Make-Const base_path 'C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\Program Files\Git\cmd;C:\Program Files\AppVeyor\BuildAgent'
 
     Make-Const 7z        "$env:ProgramFiles\7-Zip\7z.exe"
     Make-Const fc        'Yellow'
@@ -39,7 +39,8 @@ function Init-AV-Setup {
   # Download locations
   Make-Const ri1_pkgs  'https://dl.bintray.com/oneclick/OpenKnapsack'
   Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
-  Make-Const rubyloco  'https://dl.bintray.com/msp-greg/ruby_trunk'
+  Make-Const ri2_key   'F98B8484BE8BF1C5'
+  Make-Const rubyloco  'https://ci.appveyor.com/api/buildjobs/d5cvbsgovr80qo28/artifacts'
 
   Make-Const trunk_uri_64  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z'
   Make-Const trunk_uri_32  'https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x86.7z'
@@ -85,7 +86,7 @@ function Init-AV-Setup {
   # varis for trunk
   Make-Vari  run_trunk
 }
-
+ 
 #—————————————————————————————————————————————————————————————————————————————— Make-Const
 # readonly, available in all session scripts
 function Make-Const($N, $V) {
@@ -129,12 +130,35 @@ function Check-SetVars {
 #—————————————————————————————————————————————————————————————————————————————— Check-OpenSSL
 # assumes path is set to build tools
 function Check-OpenSSL {
+
+  # Create $pkgs path if it doesn't exist
+  if ( !(Test-Path -Path $pkgs -PathType Container) ) {
+    New-Item -Path $pkgs -ItemType Directory 1> $null
+  }
+
   # Set OpenSSL versions - 2.4 uses standard MinGW 1.0.2 package
-  $openssl = if ($ruby -lt '20')     { 'openssl-1.0.0o'  } # 1.9.3
-         elseif ($ruby -lt '22')     { 'openssl-1.0.1l'  } # 2.0, 2.1, 2.2
-         elseif ($ruby -lt '24')     { 'openssl-1.0.2j'  } # 2.3
-         elseif ($ruby -lt '25')     { 'openssl-1.0.2o'  } # 2.4
-         else                        { 'openssl-1.1.0.h' } # 2.5
+  $openssl = if ($ruby -lt '20') {
+          'openssl-1.0.0o'             # 1.9.3
+         } elseif ($ruby -lt '22') {
+          'openssl-1.0.1l'             # 2.0, 2.1, 2.2
+         } elseif ($ruby -lt '24') {
+          'openssl-1.0.2j'             # 2.3
+         } elseif ($ruby -lt '25') {
+          $uri = $null                 # 2.4
+          'openssl-1.0.2o'
+         } elseif ($ruby -lt '26') {
+          $uri = $ri2_pkgs             # 2.5
+          $key = $ri2_key
+          'openssl-1.1.0.h'
+         } elseif ($is64) {
+          $uri = $rubyloco             # 2.6 64 bit ruby-loco
+          $key = $null
+          'openssl-1.1.1_pre9'
+         } else {
+          $uri = ri2_pkgs              # 2.6 32 bit
+          $key = $ri2_key
+          'openssl-1.1.0.h'
+         }
 
   $bit = if ($is64) { '64 bit' } else { '32 bit'}
 
@@ -159,50 +183,47 @@ function Check-OpenSSL {
     $env:SSL_VERS = (&"$DKu/mingw/$dk_b/bin/openssl.exe" version | Out-String).Trim()
   } else {
     #—————————————————————————————————————————————————————————————————————— RubyInstaller2
-    if ($is64) { $key = 'D688DA4A77D8FA18' ; $uri = $rubyloco }
-      else     { $key = 'F98B8484BE8BF1C5' ; $uri = $ri2_pkgs }
-
     if ($ssl_vhash[$mingw] -ne $openssl) {
       Write-Host MSYS2/MinGW - $openssl $bit - Retrieving and Installing -ForegroundColor $fc
-      $t = $openssl
-
-      # as of 2018-06, OpenSSL package for 2.4 is standard MSYS2/MinGW package
-      # 2.5 and later use custom OpenSSL 1.1.0 packages
-      if ($ruby.StartsWith('24')) {
+      
+      if (!$uri) {
+        # standard MSYS2/MinGW package
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
         pacman.exe -S   --noconfirm --noprogressbar $($m_pre + 'openssl')
       } else {
+        $openssl = "$m_pre$openssl-1-any.pkg.tar.xz"
 
-        #———————————————————— ——————————————————————————————————————————————— Add GPG key
-        Write-Host "`ntry retrieving key" -ForegroundColor Yellow
+        if ($key) {
+          #———————————————————————————————————————————————————————————————————— Add GPG key
+          Write-Host "`ntry retrieving key" -ForegroundColor Yellow
 
-        $okay = Retry bash.exe -c `"pacman-key -r $key --keyserver $ks1`"
-        # below is for occasional key retrieve failure on Appveyor
-        if (!$okay) {
-          Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor Yellow
-          # try another keyserver
-          $okay = Retry bash.exe -c `"pacman-key -r $key --keyserver $ks2`"
+          $okay = Retry bash.exe -c `"pacman-key -r $key --keyserver $ks1`"
+          # below is for occasional key retrieve failure on Appveyor
           if (!$okay) {
-            Write-Host GPG Key Lookup failed from $ks2 -ForegroundColor Yellow
-            if ($in_av) {
-              Update-AppveyorBuild -Message "keyserver retrieval failed"
-            }
-            exit 1
-          } else { Write-Host GPG Key Lookup succeeded from $ks2 }
-        }   else { Write-Host GPG Key Lookup succeeded from $ks1 }
-        Write-Host "signing key" -ForegroundColor Yellow
-        bash.exe -c "pacman-key -f $key && pacman-key --lsign-key $key" 2>$null
+            Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor Yellow
+            # try another keyserver
+            $okay = Retry bash.exe -c `"pacman-key -r $key --keyserver $ks2`"
+            if (!$okay) {
+              Write-Host GPG Key Lookup failed from $ks2 -ForegroundColor Yellow
+              if ($in_av) {
+                Update-AppveyorBuild -Message "keyserver retrieval failed"
+              }
+              exit 1
+            } else { Write-Host GPG Key Lookup succeeded from $ks2 }
+          }   else { Write-Host GPG Key Lookup succeeded from $ks1 }
+          Write-Host "signing key" -ForegroundColor Yellow
+          bash.exe -c "pacman-key -f $key && pacman-key --lsign-key $key" 2>$null
 
-        if ( !(Test-Path -Path $pkgs -PathType Container) ) {
-          New-Item -Path $pkgs -ItemType Directory 1> $null
+          if( !(Test-Path -Path $pkgs/$openssl.sig -PathType Leaf) ) {
+            $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
+          }
         }
 
-        $openssl = "$m_pre$openssl-1-any.pkg.tar.xz"
+Write-Host $uri
+Write-Host $openssl
+        
         if( !(Test-Path -Path $pkgs/$openssl -PathType Leaf) ) {
           $wc.DownloadFile("$uri/$openssl"    , "$pkgs/$openssl")
-        }
-        if( !(Test-Path -Path $pkgs/$openssl.sig -PathType Leaf) ) {
-          $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
         }
 
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
