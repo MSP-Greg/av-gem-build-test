@@ -40,7 +40,7 @@ function Init-AV-Setup {
   Make-Const ri1_pkgs  'https://dl.bintray.com/oneclick/OpenKnapsack'
   Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
   Make-Const ri2_key   'F98B8484BE8BF1C5'
-  Make-Const rubyloco  'https://ci.appveyor.com/api/buildjobs/d5cvbsgovr80qo28/artifacts'
+  Make-Const rubyloco  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-makepkg-mingw/artifacts'
 
   Make-Const trunk_uri_64  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z'
   Make-Const trunk_uri_32  'https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x86.7z'
