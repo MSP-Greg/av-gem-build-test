@@ -86,7 +86,7 @@ function Init-AV-Setup {
   # varis for trunk
   Make-Vari  run_trunk
 }
- 
+
 #—————————————————————————————————————————————————————————————————————————————— Make-Const
 # readonly, available in all session scripts
 function Make-Const($N, $V) {
@@ -153,7 +153,7 @@ function Check-OpenSSL {
          } elseif ($is64) {
           $uri = $rubyloco             # 2.6 64 bit ruby-loco
           $key = $null
-          'openssl-1.1.1_pre9'
+          'openssl-1.1.1_pre10'
          } else {
           $uri = ri2_pkgs              # 2.6 32 bit
           $key = $ri2_key
@@ -185,7 +185,7 @@ function Check-OpenSSL {
     #—————————————————————————————————————————————————————————————————————— RubyInstaller2
     if ($ssl_vhash[$mingw] -ne $openssl) {
       Write-Host MSYS2/MinGW - $openssl $bit - Retrieving and Installing -ForegroundColor $fc
-      
+
       if (!$uri) {
         # standard MSYS2/MinGW package
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
@@ -219,9 +219,6 @@ function Check-OpenSSL {
           }
         }
 
-Write-Host $uri
-Write-Host $openssl
-        
         if( !(Test-Path -Path $pkgs/$openssl -PathType Leaf) ) {
           $wc.DownloadFile("$uri/$openssl"    , "$pkgs/$openssl")
         }
@@ -455,7 +452,7 @@ function Update-MSYS2 {
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW db gdbm libgdbm libreadline ncurses" -ForegroundColor $fc
       pacman.exe -Sy --noconfirm --needed --noprogressbar db gdbm libgdbm libreadline ncurses 2> $null
       Check-Exit 'Cannot update db gdbm libgdbm libreadline ncurses'
-      
+
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW base-devel" -ForegroundColor $fc
       pacman.exe -S --noconfirm --needed --noprogressbar base-devel 2> $null
       Check-Exit 'Cannot update base-devel'
@@ -466,7 +463,7 @@ function Update-MSYS2 {
       #pacman.exe -S --noconfirm --needed --noprogressbar brotli ca-certificates glib2 gmp heimdal-libs icu libasprintf libcrypt
       #pacman.exe -S --noconfirm --needed --noprogressbar libdb libedit libexpat libffi libgettextpo libhogweed libidn2 liblzma
       pacman.exe -S --noconfirm --needed --noprogressbar libmetalink libnettle libnghttp2 libopenssl libp11-kit libpcre libpsl 2> $null
-      #pacman.exe -S --noconfirm --needed --noprogressbar libssh2 libtasn1 libunistring libxml2 libxslt openssl p11-kit 
+      #pacman.exe -S --noconfirm --needed --noprogressbar libssh2 libtasn1 libunistring libxml2 libxslt openssl p11-kit
 
       Write-Host "Updating gnupg package dependencies" -ForegroundColor Yellow
       # below are listed gnupg dependencies
