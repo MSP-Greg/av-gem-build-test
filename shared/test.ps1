@@ -4,19 +4,23 @@
 
 if ($exit_code) { exit $exit_code }
 
-Make-Const enable_jit $false
+function Init-Test {
+  Make-Vari log_name      ''         # executing ruby build test log file
+  Make-Vari test_results  ''         # text of above file
+  Make-Vari test_summary  ''         # summary of results
 
-Make-Vari log_name      ''
-Make-Vari test_results  ''
-Make-Vari test_summary  ''
-Make-Vari gem_full      ''
-Make-Vari ruby_desc     ''
+  Make-Vari ruby_desc     ''         # string like trunk-x64 or ruby25-x64
+  Make-Vari ruby_v        ''         # output of ruby -v
+  Make-Vari ruby_v_a      nil        # above split into array
+  Make-Vari fail_error_re ''         # regex used to find failure & error text in test output
+  Make-Vari fail_error_summary  ''
 
-Make-Vari test_trunk
-Make-Vari test_trunk_jit
-Make-Vari test_use
+  Make-Vari test_trunk               # true if trunk should be tested
+  Make-Vari test_trunk_jit           # true if trunk with JIT should be tested
+  Make-Vari test_use                 # true if trunk tests results fail build
 
-$dt = Get-Date -UFormat "%Y-%m-%d_%H-%M"
+  $dt = Get-Date -UFormat "%Y-%m-%d_%H-%M"
+}
 
 #————————————————————————————————————————————————————————————————————————————————— Get-Secs
 # parses $test_results and returns Sec time, rounded to 0.1 sec
@@ -51,10 +55,12 @@ function Get-Std-Out {
 #————————————————————————————————————————————————————————————————————————————————— Process-Log
 # parses log, adds ruby -v & $commit_info, removes gem path, sets to $test_results
 function Process-Log {
-  ruby -v      | Add-Content -Path $log_name -PassThru -Encoding UTF8
-  $commit_info | Add-Content -Path $log_name -PassThru -Encoding UTF8
-  (Get-Content $log_name).replace("$gem_dflt/gems/", "") | Set-Content $log_name -Encoding UTF8
-  $test_results = [System.Io.File]::ReadAllText($log_name)
+  Write-Host $ruby_v
+  Write-Host $commit_info
+  $test_results = [System.Io.File]::ReadAllText($log_name, $UTF8)
+  $test_results +=  "$ruby_v`n$gem_full_name`n$commit_info`n"
+  $test_results = $test_results.replace("$gem_dflt/gems/$gem_full_name/", "    ").replace("`r", "")
+  [IO.File]::WriteAllText($log_name, $test_results, $UTF8)
 }
 
 #————————————————————————————————————————————————————————————————————————————————— AV-Test
@@ -62,35 +68,52 @@ function Process-Log {
 function AV-Test($outcome) {
   $std_out = Get-Std-Out
   if ($outcome -eq 'Failed') {
-    $oc = if (!$test_used) { 'Ignored' } else { 'Failed' }
+    $oc = if (!$test_use) { 'Ignored' } else { 'Failed' }
     Add-AppveyorTest -Name $ruby_desc -Outcome $oc `
       -StdOut $std_out -Framework "ruby" -FileName $gem_full_name
   } else {
-    $oc = if ($outcome -eq 0) {'Passed'} elseif (!$test_used) {'Ignored'} else {'Failed'}
+    $oc = if ($outcome -eq 0) {'Passed'} elseif (!$test_use) {'Ignored'} else {'Failed'}
     $ms = Get-MS
     Add-AppveyorTest -Name $ruby_desc -Outcome $oc -Duration $ms `
       -StdOut $std_out -Framework "ruby" -FileName $gem_full_name
   }
 }
 
+function Add-Fail-Error {
+  if ($fail_error_summary -eq '') {
+    $fail_error_summary = "$gem_full_name`n$commit_info`n"
+  }
+
+  $ri = " {0,-11} {1,-15} ({2}`n" -f (@(Ruby-Desc) + $ruby_v_a)
+  $fail_error_summary += "`n" + "$ri".PadLeft(85, $dash) + "`n"
+
+  $ary_fail_error = $test_results | Select-String $fail_error_re -AllMatches |
+    Foreach-Object {$_.Matches} | Foreach-Object {$_.Groups[1].Value}
+
+  $fail_error_summary += $ary_fail_error -join "`n"
+}
+
 #————————————————————————————————————————————————————————————— minitest results parser
 function minitest {
   Process-Log
-  if ($test_summary -eq '') { 
+  if ($test_summary -eq '') {
     $test_summary   = " Runs  Asserts  Fails  Errors  Skips  Secs  Ruby"
   }
+
+  $fail_error_re = '(?ms)(^ {0,2}\d+\) (:?Failure: |Error: ).+?)(?=(^ {0,2}\d+\) (Failure: |Error: |Skipped: )|^\d+ runs,))'
 
   if ($test_results -match "(?m)^\d+ runs.+ skips") {
     $ary = ($matches[0] -replace "[^\d]+", ' ').Trim().Split(' ')
     $errors_fails = [int]$ary[2] + [int]$ary[3]
+    if ($errors_fails -ne 0) { Add-Fail-Error }
     if ($in_av) { AV-Test $errors_fails }
     if ($test_use) { $ttl_errors_fails += $errors_fails }
-    $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v
+    $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v_a
     $test_summary += "`n{0,4:n}    {1,4:n}   {2,4:n}    {3,4:n}    {4,4:n} {5,6:n1}  {6,-11} {7,-15} ({8}" -f $ary
   } else {
     if ($in_av) { AV-Test 'Failed' }
     if ($test_use) { $ttl_errors_fails += 1000 }
-    $ary = @($(Ruby-Desc)) + $ruby_v
+    $ary = @($(Ruby-Desc)) + $ruby_v_a
     $test_summary += "`ntesting aborted?                            {0,-11} {1,-15} ({2}" -f $ary
   }
 }
@@ -105,12 +128,12 @@ function rspec {
     $errors_fails = [int]$ary[1]
     if ($in_av) { AV-Test $errors_fails }
     if ($test_use) { $ttl_errors_fails += $errors_fails }
-    $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v
+    $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v_a
     $test_summary += "`n  {0,4:n}    {1,4:n}   {2,6:n1}  {3,-11} {4,-15} ({5}" -f $ary
   } else {
     if ($in_av) { AV-Test 'Failed' }
     if ($test_use) { $ttl_errors_fails += 1000 }
-    $ary = @($(Ruby-Desc)) + $ruby_v
+    $ary = @($(Ruby-Desc)) + $ruby_v_a
     $test_summary += "`ntesting aborted?                      {0,-11} {1,-15} ({2}" -f $ary
   }
 }
@@ -122,24 +145,26 @@ function test_unit {
     $test_summary    = "Tests  Asserts  Fails  Errors  Pend  Omitted  Notes  Secs  Ruby"
   }
 
-  $results =
+  $fail_error_re = '(?ms)(^ {0,2}\d+\) (:?Failure: |Error: ).+?)(?=(^ {0,2}\d+\) (Failure: |Error: |Pending: )|^Omissions:))'
+
   if ($test_results -match "(?m)^\d+ tests.+ notifications") {
     $ary = ($matches[0] -replace "[^\d]+", ' ').Trim().Split(' ')
     $errors_fails = [int]$ary[2] + [int]$ary[3]
+    if ($errors_fails -ne 0) { Add-Fail-Error }
     if ($in_av) { AV-Test $errors_fails }
     if ($test_use) { $ttl_errors_fails += $errors_fails }
-    $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v
+    $ary += @($(Get-Secs), $(Ruby-Desc)) + $ruby_v_a
     $test_summary += "`n{0,4:n}    {1,4:n}   {2,4:n}    {3,4:n}   {4,4:n}    {5,4:n}   {6,4:n}  {7,6:n1}  {8,-11} {9,-15} ({10}" -f $ary
   } else {
     if ($in_av) { AV-Test 'Failed' }
     if ($test_use) { $ttl_errors_fails += 1000 }
-    $ary = @($(Ruby-Desc)) + $ruby_v
+    $ary = @($(Ruby-Desc)) + $ruby_v_a
     $test_summary += "`ntesting aborted?                                             {0,-11} {1,-15} ({2}" -f $ary
   }
 }
 
 #————————————————————————————————————————————————————————————— Find-Gem
-# locates gem if $gem_file_name isn't set, which happens when 
+# locates gem if $gem_file_name isn't set, which happens when
 # make.ps1 (for testing)
 function Find-Gem {
   # if make.ps1 is bypassed, get commit_info and try to find gem name
@@ -170,15 +195,17 @@ function Find-Gem {
 #————————————————————————————————————————————————————————————————————————————————— Main
 $gem_full_path = Find-Gem
 
+Init-Test
+
 Path-Make $dir_ps\test_logs
 del $dir_ps\test_logs\*.txt
 
 if ($is64) {
   $test_trunk     = $trunk_x64     -ne $null
-  $test_trunk_jit = ($trunk_x64_jit -ne $null) -and $enable_jit
+  $test_trunk_jit = $trunk_x64_jit -ne $null
 } else {
   $test_trunk     = $trunk     -ne $null
-  $test_trunk_jit = ($trunk_jit -ne $null) -and $enable_jit
+  $test_trunk_jit = $trunk_jit -ne $null
 }
 
 Load-Rubies
@@ -189,15 +216,15 @@ foreach ($ruby in $rubies) {
   if ($ruby -ne '99' -and $env:RUBYOPT) {
     Remove-Item Env:\RUBYOPT
   }
-  
+
   Check-SetVars
 
   $ruby_desc = Ruby-Desc
-  
+
   $orig_path = ''
   $loops = if ($ruby -eq '99' -and $test_trunk -and $test_trunk_jit )
     { @(1,2) } else { @(1) }
-  
+
   foreach ($loop in $loops) {
     if ($loop -eq 1) {
       if ($ruby -eq '99' -and $test_trunk_jit) {
@@ -211,7 +238,7 @@ foreach ($ruby in $rubies) {
       $ruby_desc = Ruby-Desc
       $env:path = $orig_path
     }
-    
+
     $test_use = switch ($ruby_desc) {
       'trunk'         { $trunk         }
       'trunk-JIT'     { $trunk_jit     }
@@ -219,7 +246,7 @@ foreach ($ruby in $rubies) {
       'trunk-x64-JIT' { $trunk_x64_jit }
       default         { $true          }
     }
-    
+
     Write-Host "`n$($dash * 75) Testing $ruby_desc" -ForegroundColor $fc
     if ($loop -eq 1) {
       if (!$in_av)  { gem uninstall $gem_name -x -a }
@@ -232,8 +259,8 @@ foreach ($ruby in $rubies) {
       $rake_dir = "$gem_user/gems/$gem_full_name"
       if ( !(Test-Path -Path $rake_dir -PathType Container) ) { continue }
     }
-
-    $ruby_v = [regex]::split( (ruby.exe -v | Out-String).Replace(" [$r_plat]", '').Trim(), ' \(')
+    $ruby_v = ruby.exe -v
+    $ruby_v_a = [regex]::split( $ruby_v.Replace(" [$r_plat]", '').Trim(), ' \(')
     $log_name = "$dir_ps\test_logs\$ruby_desc.txt"
     ruby.exe -v
     Push-Location $rake_dir
@@ -241,6 +268,16 @@ foreach ($ruby in $rubies) {
     Pop-Location
   }
 }
+
+$details =  " $gem_full_name Test Summary".PadLeft(85, $dash)
+$details += "`n$test_summary"
+$details += "`n`nCommit Info: $commit_info`n"
+[IO.File]::WriteAllText("$dir_ps\test_logs\summary_test_results.txt", $details, $UTF8)
+
+if ($fail_error_summary -ne '') {
+  [IO.File]::WriteAllText("$dir_ps\test_logs\summary_fail_error.txt", $fail_error_summary, $UTF8)
+}
+
 
 # collect all log files
 $fn_log = "$dir_ps\test_logs\test_logs-$g_plat" + ".7z"
@@ -251,16 +288,13 @@ $fn_log = "$dir_ps\test_logs\test_logs-$g_plat" + ".7z"
 
 if ($in_av) {
   Push-AppveyorArtifact $fn_log
-  $details =  " $gem_full_name Test Summary".PadLeft(100, $dash)
-  $details += "`n$test_summary"
-  $details += "`n`nCommit Info: $commit_info`n"
   $msg = if ($suf -eq '') { "Test Summary 32 bit" } else { "Test Summary 64 bit" }
   Add-AppveyorMessage -Message $msg -Details $details
 }
 
 # write test summary info at end of testing
-$txt = " $gem_full_name Test Summary".PadLeft(100, $dash)
+$txt = " $gem_full_name Test Summary".PadLeft(85, $dash)
 Write-Host "`n$txt" -ForegroundColor $fc
 Write-Host $test_summary
-Write-Host ($dash * 100) -ForegroundColor $fc
+Write-Host ($dash * 85) -ForegroundColor $fc
 Write-Host "`nCommit Info: $commit_info`n" -ForegroundColor $fc

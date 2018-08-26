@@ -47,6 +47,7 @@ function Init-AV-Setup {
   Make-Const trunk_32_root 'rubyinstaller-head-x86'
 
   # Misc
+  Make-Const UTF8           $(New-Object System.Text.UTF8Encoding $False)
   Make-Const SSL_CERT_FILE "$dflt_ruby\ssl\cert.pem"
   Make-Const ks1           'hkp://pool.sks-keyservers.net'
   #Make-Const ks1           'hkp://pool.sks-keyservers.no'
@@ -137,6 +138,7 @@ function Check-OpenSSL {
   }
 
   # Set OpenSSL versions - 2.4 uses standard MinGW 1.0.2 package
+  $openssl_sha = ''
   $openssl = if ($ruby -lt '20') {
           'openssl-1.0.0o'             # 1.9.3
          } elseif ($ruby -lt '22') {
@@ -153,9 +155,10 @@ function Check-OpenSSL {
          } elseif ($is64) {
           $uri = $rubyloco             # 2.6 64 bit ruby-loco
           $key = $null
+          $openssl_sha = '0689fe7fe1dc6e7297a41e415b5d82596f5f369245db9725c3d164368e6356c1465183c9f9ef6348163500586f82e6e8e9873ba5c2ba807d5ac183b1e4697ab1'
           'openssl-1.1.1_pre10'
          } else {
-          $uri = ri2_pkgs              # 2.6 32 bit
+          $uri = $ri2_pkgs             # 2.6 32 bit
           $key = $ri2_key
           'openssl-1.1.0.h'
          }
@@ -221,6 +224,9 @@ function Check-OpenSSL {
 
         if( !(Test-Path -Path $pkgs/$openssl -PathType Leaf) ) {
           $wc.DownloadFile("$uri/$openssl"    , "$pkgs/$openssl")
+          if ($openssl_sha -ne '') {
+            Check-SHA $pkgs $openssl $uri $openssl_sha
+          }
         }
 
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
@@ -233,6 +239,35 @@ function Check-OpenSSL {
       Write-Host MSYS2/MinGW - $openssl $bit - Already installed -ForegroundColor $fc
     }
     $env:SSL_VERS = (&"$msys2\$mingw\bin\openssl.exe" version | Out-String).Trim()
+  }
+}
+
+#—————————————————————————————————————————————————————————————————————————————— Check_SHA
+# checks SHA512 from file, script variable & Appveyor message
+function Check-SHA($path, $file, $uri_dl, $sha_local) {
+  $uri_bld = $uri_dl -replace '/artifacts$', ''
+  $obj_bld = ConvertFrom-Json -InputObject $(Invoke-WebRequest -Uri $uri_bld)
+  $job_id = $obj_bld.build.jobs[0].jobId
+
+  $json_msgs = Invoke-WebRequest -Uri "https://ci.appveyor.com/api/buildjobs/$job_id/messages"
+  $obj_msgs = ConvertFrom-Json -InputObject $json_msgs
+  $sha_msg  = $($obj_msgs.list | Where {$_.message -eq $($file + '_SHA512')}).details
+
+  $sha_file = $(CertUtil -hashfile $path\$file SHA512).split("`r`n")[1].replace(' ', '')
+  if ($sha_local -ne '') {
+    if (($sha_msg -eq $sha_file) -and ($sha_local -eq $sha_file)) {
+      Write-Host "Three SHA512 values match for file, Appveyor message, and local script" -ForegroundColor $fc
+    } else {
+      Write-Host SHA512 values do not match -ForegroundColor $fc
+      exit 1
+    }
+  } else {
+    if ($sha_msg -eq $sha_file) {
+      Write-Host SHA512 matches for file and Appveyor message -ForegroundColor $fc
+    } else {
+      Write-Host SHA512 values do not match -ForegroundColor $fc
+      exit 1
+    }
   }
 }
 
@@ -382,6 +417,7 @@ function Retry {
 }
 
 #—————————————————————————————————————————————————————————————————————————————— Ruby-Desc
+# returns string like trunk-x64 or ruby25-x64
 function Ruby-Desc {
   if ($ruby -eq '99') {
     if ($is64) { return 'trunk-x64' } else { return 'trunk' }

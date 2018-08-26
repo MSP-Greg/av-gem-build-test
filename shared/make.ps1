@@ -12,17 +12,17 @@ if ( Test-Path -Path .\tmp -PathType Container ) {
   Remove-Item  -Path .\tmp -Recurse -Force
 }
 
+# call optional function in gem ps1 file, allows changes before starting build
+# typically checks MSYS2 for packages used by all Ruby versions
 if (Get-Command Repo-Changes -errorAction SilentlyContinue) { Repo-Changes }
 
-# Write fat binary rb files if used
+# if used, write rb files that load correct so file
 if ($write_so_require) {
   foreach ($ext in $exts) {
     $file_text = "require_relative `"#{RUBY_VERSION[/\A\d+\.\d+/]}/" + $ext.so + "`"`n"
     $fn = "$dir_gem\$dest_so\" + $ext.so + '.rb'
-    # Out-File -NoNewline-FilePath $dir_gem\$dest_so\$fn -InputObject $file_text -Encoding UTF8
     # below needed to write UTF8 file without BOM
-    $Utf8NoBom = New-Object System.Text.UTF8Encoding $False
-    [IO.File]::WriteAllText($fn, $file_text, $Utf8NoBom)
+    [IO.File]::WriteAllText($fn, $file_text, $UTF8)
   }
 }
 
@@ -42,7 +42,7 @@ foreach ($ruby in $rubies) {
 
   Check-SetVars
 
-  # Add build system bin folders
+  # Add build system bin folders to path
   if ($isRI2) {
     $env:path += ";$msys2\$mingw\bin;$msys2\usr\bin;"
     Update-MSYS2
@@ -54,7 +54,9 @@ foreach ($ruby in $rubies) {
   Write-Host "`n$($dash * 75) $(Ruby-Desc)" -ForegroundColor $fc
   ruby.exe -v
   Write-Host RubyGems (gem --version)
- 
+
+  # call optional function in gem ps1 file, allows changes before starting builds,
+  # typically used for MSYS2 packages that are Ruby version dependent, like OpenSSL
   if (Get-Command Pre-Compile -errorAction SilentlyContinue) { Pre-Compile }
 
   $dest = "$dir_gem\$dest_so\$abi_vers"
@@ -85,7 +87,7 @@ foreach ($ruby in $rubies) {
 
     $fn = $so + '.so'
     Write-Host Creating $dest_so\$abi_vers\$fn
-    
+
     Copy-Item -Path $fn -Destination $dest\$fn -Force
     Pop-Location
   }
@@ -102,7 +104,7 @@ Push-Location $dir_gem
 $env:commit_info = $commit_info
 ruby.exe $dir_ps\package_gem.rb $g_plat $rv_min $rv_max | Tee-Object -Variable bytes
 Pop-Location
-Check-Exit '' 
+Check-Exit
 Remove-Item Env:commit_info
 
 # below mess is outputing package_gem.rb to console and a variable
@@ -112,7 +114,7 @@ $t = @()
 foreach ($b in $bytes) {
   if ($b -ne 0) { $t += $b }
 }
-$gem_out = [System.Text.Encoding]::UTF8.GetString($t)
+$gem_out = $UTF8.GetString($t)
 
 $gem_file_name = if ($gem_out -imatch "\s+File:\s+(\S+)") { $matches[1]
   } else {
