@@ -31,7 +31,7 @@ if ( Test-Path -Path $dir_ps\Rakefile_wintest -PathType Leaf) {
   Copy-Item -Path $dir_ps\Rakefile_wintest -Destination $dir_gem -Force
 }
 Pop-Location
-#———————————————————————————————————————————————————————— Done with Process Repo
+#—————————————————————————————————————————————————————————————— Done with Process Repo
 
 [string[]]$so_dests = @()
 
@@ -92,11 +92,11 @@ foreach ($ruby in $rubies) {
     Pop-Location
   }
 }
-# Strip all *.so files
+#———————————————————————————————————————————————————————————————— Strip all *.so files
 [string[]]$sos = Get-ChildItem -Include *.so -Path $dir_gem\$dest_so -Recurse | select -expand fullname
 foreach ($so in $sos) { strip.exe --strip-unneeded -p $so }
 
-# package gem
+#————————————————————————————————————————————————————————————————————————— package gem
 Write-Host "`n$($dash * 60)" Packaging Gem $g_plat -ForegroundColor $fc
 $env:path = $dir_ruby + "25-x64\bin;$base_path"
 

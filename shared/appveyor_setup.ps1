@@ -4,7 +4,7 @@
 
 $LastExitCode = $null
 
-#—————————————————————————————————————————————————————————————————————————————— Init
+#———————————————————————————————————————————————————————————————————————————————— Init
 # below sets constants & variables for use, use local_paths.ps1 for a local run
 function Init-AV-Setup {
   if ($env:APPVEYOR) {
@@ -50,7 +50,6 @@ function Init-AV-Setup {
   Make-Const UTF8           $(New-Object System.Text.UTF8Encoding $False)
   Make-Const SSL_CERT_FILE "$dflt_ruby\ssl\cert.pem"
   Make-Const ks1           'hkp://pool.sks-keyservers.net'
-  #Make-Const ks1           'hkp://pool.sks-keyservers.no'
   Make-Const ks2           'hkp://pgp.mit.edu'
   Make-Const dash          "$([char]0x2015)"
   Make-Const wc            $(New-Object System.Net.WebClient)
@@ -88,13 +87,13 @@ function Init-AV-Setup {
   Make-Vari  run_trunk
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Make-Const
+#—————————————————————————————————————————————————————————————————————————— Make-Const
 # readonly, available in all session scripts
 function Make-Const($N, $V) {
   New-Variable -Name $N -Value $V  -Scope Script -Option AllScope, Constant
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Make-Vari
+#——————————————————————————————————————————————————————————————————————————— Make-Vari
 # available in all session scripts
 function Make-Vari($N, $V) {
   try { New-Variable -Name $N -Value $V  -Scope Script -Option AllScope -ErrorAction "Stop" }
@@ -102,7 +101,7 @@ function Make-Vari($N, $V) {
 #  New-Variable -Name $N -Value $V  -Scope Script -Option AllScope
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Check-Exit
+#—————————————————————————————————————————————————————————————————————————— Check-Exit
 # checks whether to exit
 function Check-Exit($msg, $pop) {
   if ($LastExitCode -and $LastExitCode -ne 0) {
@@ -112,7 +111,7 @@ function Check-Exit($msg, $pop) {
   }
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Check-SetVars
+#——————————————————————————————————————————————————————————————————————— Check-SetVars
 function Check-SetVars {
   # Set up path with Ruby bin
   $env:path = "$dir_ruby$ruby$suf\bin;" + $base_path
@@ -128,7 +127,7 @@ function Check-SetVars {
   $abi_vers = &ruby.exe -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/]"
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Check-OpenSSL
+#——————————————————————————————————————————————————————————————————————— Check-OpenSSL
 # assumes path is set to build tools
 function Check-OpenSSL {
 
@@ -166,7 +165,7 @@ function Check-OpenSSL {
   $bit = if ($is64) { '64 bit' } else { '32 bit'}
 
   if (!$isRI2) {
-    #—————————————————————————————————————————————————————————————————————— RubyInstaller
+    #——————————————————————————————————————————————————————————————————— RubyInstaller
     if ($is64) { $86_64 = 'x64' ; $dk_b = 'x86_64-w64-mingw32' }
     else       { $86_64 = 'x86' ; $dk_b = 'i686-w64-mingw32'   }
 
@@ -185,7 +184,7 @@ function Check-OpenSSL {
     $env:OPENSSL_CONF  = "$DKu/mingw/ssl/openssl.cnf"
     $env:SSL_VERS = (&"$DKu/mingw/$dk_b/bin/openssl.exe" version | Out-String).Trim()
   } else {
-    #—————————————————————————————————————————————————————————————————————— RubyInstaller2
+    #—————————————————————————————————————————————————————————————————— RubyInstaller2
     if ($ssl_vhash[$mingw] -ne $openssl) {
       Write-Host MSYS2/MinGW - $openssl $bit - Retrieving and Installing -ForegroundColor $fc
 
@@ -197,7 +196,7 @@ function Check-OpenSSL {
         $openssl = "$m_pre$openssl-1-any.pkg.tar.xz"
 
         if ($key) {
-          #———————————————————————————————————————————————————————————————————— Add GPG key
+          #——————————————————————————————————————————————————————————————— Add GPG key
           Write-Host "`ntry retrieving key" -ForegroundColor Yellow
 
           $okay = Retry bash.exe -c `"pacman-key -r $key --keyserver $ks1`"
@@ -242,7 +241,7 @@ function Check-OpenSSL {
   }
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Check_SHA
+#——————————————————————————————————————————————————————————————————————————— Check_SHA
 # checks SHA512 from file, script variable & Appveyor message
 function Check-SHA($path, $file, $uri_dl, $sha_local) {
   $uri_bld = $uri_dl -replace '/artifacts$', ''
@@ -271,7 +270,7 @@ function Check-SHA($path, $file, $uri_dl, $sha_local) {
   }
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Install-Trunk
+#——————————————————————————————————————————————————————————————————————— Install-Trunk
 # Loads trunk into ruby99 or ruby99-x64
 function Install-Trunk {
   Write-Host "Installing Trunk..." -ForegroundColor $fc
@@ -302,7 +301,7 @@ function Install-Trunk {
   return &"$trunk_path\bin\ruby.exe" -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/]"
 }
 
-#——————————————————————————————————————————————————————————————————————————————  Load-Rubies
+#————————————————————————————————————————————————————————————————————————  Load-Rubies
 # loads array of ruby versions to loop thru
 function Load-Rubies {
 
@@ -343,7 +342,7 @@ function Load-Rubies {
   }
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Package-DevKit
+#—————————————————————————————————————————————————————————————————————— Package-DevKit
 # $pkg parameter is <name-version>
 # $b parameter should be 32, 64, or null for both
 function Package-DevKit($pkg, $b) {
@@ -367,7 +366,7 @@ function Package-DevKit($pkg, $b) {
   }
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Package-MSYS2
+#——————————————————————————————————————————————————————————————————————— Package-MSYS2
 function Package-MSYS2($pkg) {
   Check-SetVars
   $s = if ($need_refresh) { '-Sy' } else { '-S' }
@@ -377,7 +376,7 @@ function Package-MSYS2($pkg) {
   $need_refresh = $false
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Path-Make
+#——————————————————————————————————————————————————————————————————————————— Path-Make
 # make a path
 function Path-Make($p) {
   if ( !(Test-Path -Path $p -PathType Container) ) {
@@ -385,7 +384,7 @@ function Path-Make($p) {
   }
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Retry
+#——————————————————————————————————————————————————————————————————————————————— Retry
 # retries passed parameters as a command three times
 function Retry {
   $err_action = $ErrorActionPreference
@@ -416,7 +415,7 @@ function Retry {
   return $false
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Ruby-Desc
+#——————————————————————————————————————————————————————————————————————————— Ruby-Desc
 # returns string like trunk-x64 or ruby25-x64
 function Ruby-Desc {
   if ($ruby -eq '99') {
@@ -426,7 +425,7 @@ function Ruby-Desc {
   }
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Update-Gems
+#————————————————————————————————————————————————————————————————————————— Update-Gems
 # Call with a comma separated list of gems to update / install
 function Update-Gems($str_gems) {
   if ($env:RUBYOPT) {
@@ -459,21 +458,27 @@ function Update-Gems($str_gems) {
   }
 }
 
-#—————————————————————————————————————————————————————————————————————————————— Update-MSYS2
+#———————————————————————————————————————————————————————————————————————— Update-MSYS2
 # updates MSYS2/MinGW if $isRI2, sets $need_refresh to $false
 # needs paths set to MSYS2 before calling
 function Update-MSYS2 {
   if ($need_refresh) {
     if ($msys_full) {
-      Write-Host "$($dash * 63) Updating MSYS2 / MinGW" -ForegroundColor Yellow
+      Write-Host "$($dash * 63) Updating MSYS2 / MinGW" -ForegroundColor $fc
 
-      Write-Host "pacman.exe -Syu --noconfirm --noprogressbar" -ForegroundColor Yellow
+      Write-Host "pacman.exe -Syu --noconfirm --noprogressbar" -ForegroundColor $fc
       pacman.exe -Syu --noconfirm --noprogressbar
 
-      Write-Host "`npacman.exe -Su --noconfirm --noprogressbar" -ForegroundColor Yellow
+      Write-Host "`npacman.exe -Su --noconfirm --noprogressbar" -ForegroundColor $fc
       pacman.exe -Su --noconfirm --noprogressbar
 
     } else {
+      Write-Host "$($dash * 63) Updating MSYS2 / MinGW" -ForegroundColor $fc
+      Write-Host "pacman.exe -Sy --noconfirm --needed --noprogressbar" -ForegroundColor $fc
+      pacman.exe -Sy --noconfirm --needed --noprogressbar
+
+<#———————————————————————————————————————————————————————————————————————— 30-Aug-2018
+
       # Only use below for really outdated systems, as it wil perform a full update
       # for 'newer' systems...
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW -Syu" -ForegroundColor $fc
@@ -508,8 +513,9 @@ function Update-MSYS2 {
 
       Write-Host "Updating gnupg" -ForegroundColor Yellow
       pacman.exe -S --noconfirm --needed --noprogressbar gnupg 2> $null
-
+#>
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
+      Write-Host "pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain')" -ForegroundColor $fc
       pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
       Check-Exit 'Cannot update toolchain'
     }
@@ -517,6 +523,7 @@ function Update-MSYS2 {
       Write-Host "Clean cache & database" -ForegroundColor Yellow
       Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
       pacman.exe -Sc  --noconfirm
+
     }
     $need_refresh = $false
   }
