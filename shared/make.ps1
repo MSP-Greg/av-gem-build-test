@@ -16,7 +16,7 @@ if ( Test-Path -Path .\tmp -PathType Container ) {
 # typically checks MSYS2 for packages used by all Ruby versions
 if (Get-Command Repo-Changes -errorAction SilentlyContinue) { Repo-Changes }
 
-# if used, write rb files that load correct so file
+# if used, write rb files that load correct so file based on Ruby ABI version
 if ($write_so_require) {
   foreach ($ext in $exts) {
     $file_text = "require_relative `"#{RUBY_VERSION[/\A\d+\.\d+/]}/" + $ext.so + "`"`n"
