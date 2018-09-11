@@ -154,9 +154,9 @@ function Check-OpenSSL {
          } elseif ($is64) {
           $uri = $rubyloco             # 2.6 64 bit ruby-loco
           $key = $null
-          # 2018-09-05
-          $openssl_sha = '6530dd0c37e5cff8dab4f9309da3a32348aa0c424a7773168f0d656b502f21b68da3cd7512747cc620fd5d1dfefcb604b9a81e9b65e9690a305f71e03f8eca7a'
-          'openssl-1.1.1_pre10'
+          # OpenSSL 1.1.1 release
+          $openssl_sha = '0c8be3277693f60c319f997659c2fed0eadce8535aed29a4617ec24da082b60ee30a03d3fe1024dae4461041e6e9a5e5cff1a68fa08b4b8791ea1bf7b02abc40'
+          'openssl-1.1.1'
          } else {
           $uri = $ri2_pkgs             # 2.6 32 bit
           $key = $ri2_key
