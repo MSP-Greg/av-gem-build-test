@@ -59,7 +59,9 @@ function Process-Log {
   Write-Host $commit_info
   $test_results = [System.Io.File]::ReadAllText($log_name, $UTF8)
   $test_results +=  "$ruby_v`n$gem_full_name`n$commit_info`n"
-  $test_results = $test_results.replace("$gem_dflt/gems/$gem_full_name/", "    ").replace("`r", "")
+  $gem_full_path = "$gem_dflt/gems/$gem_full_name/"
+  $test_results = $test_results.replace("[$gem_full_path", "[")
+  $test_results = $test_results.replace($gem_full_path, "    ").replace("`r", "")
   [IO.File]::WriteAllText($log_name, $test_results, $UTF8)
 }
 

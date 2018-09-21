@@ -519,6 +519,11 @@ function Update-MSYS2 {
       Write-Host "pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain')" -ForegroundColor $fc
       pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
       Check-Exit 'Cannot update toolchain'
+
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW ruby depends" -ForegroundColor Yellow
+      $tools =  "___gdbm ___gmp ___libffi ___ncurses ___readline ___zlib".replace('___', $m_pre)
+      pacman.exe -S --noconfirm --needed --noprogressbar $tools.split(' ') 2> $null
+      Check-Exit 'Cannot update Ruby dependencies'
     }
     if ($in_av) {
       Write-Host "Clean cache & database" -ForegroundColor Yellow
