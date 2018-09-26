@@ -37,11 +37,21 @@ function Init-AV-Setup {
   Make-Const dir_user  "$env:USERPROFILE\.gem\ruby\"
   Make-Const ruby_vers_high 40
   # Download locations
+  
+  # old RI knapsack packages
   Make-Const ri1_pkgs  'https://dl.bintray.com/oneclick/OpenKnapsack'
+
+  # used for older MSYS2/MinGW packages, used by 2.4.4
+  Make-Const msys_pkgs 'https://dl.bintray.com/msp-greg/MSYS2-MinGW-OpenSSL'
+  
+  # RI2 packages, at present 2.5 and 32 bit trunk
   Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
   Make-Const ri2_key   'F98B8484BE8BF1C5'
+
+  # used for latest, greatest OpenSSL, used by ruby-loco (64 bit trunk)
   Make-Const rubyloco  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-makepkg-mingw/artifacts'
 
+  # download URI's for trunk builds, ruby-loco is only 64 bit, RI2 builds 32 bit
   Make-Const trunk_uri_64  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z'
   Make-Const trunk_uri_32  'https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x86.7z'
   Make-Const trunk_32_root 'rubyinstaller-head-x86'
@@ -98,7 +108,6 @@ function Make-Const($N, $V) {
 function Make-Vari($N, $V) {
   try { New-Variable -Name $N -Value $V  -Scope Script -Option AllScope -ErrorAction "Stop" }
   catch {  }
-#  New-Variable -Name $N -Value $V  -Scope Script -Option AllScope
 }
 
 #—————————————————————————————————————————————————————————————————————————— Check-Exit
@@ -145,8 +154,8 @@ function Check-OpenSSL {
          } elseif ($ruby -lt '24') {
           'openssl-1.0.2j'             # 2.3
          } elseif ($ruby -lt '25') {
-          $uri = $null                 # 2.4
-          'openssl-1.0.2o'
+          $uri = $msys_pkgs            # 2.4
+          'openssl-1.0.2.o'
          } elseif ($ruby -lt '26') {
           $uri = $ri2_pkgs             # 2.5
           $key = $ri2_key
@@ -223,9 +232,11 @@ function Check-OpenSSL {
         }
 
         if( !(Test-Path -Path $pkgs/$openssl -PathType Leaf) ) {
-          $wc.DownloadFile("$uri/$openssl"    , "$pkgs/$openssl")
+          $wc.DownloadFile("$uri/$openssl"      , "$pkgs/$openssl")
           if ($openssl_sha -ne '') {
             Check-SHA $pkgs $openssl $uri $openssl_sha
+          } else {
+            $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
           }
         }
 
