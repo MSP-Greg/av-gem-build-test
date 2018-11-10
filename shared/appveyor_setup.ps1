@@ -37,13 +37,13 @@ function Init-AV-Setup {
   Make-Const dir_user  "$env:USERPROFILE\.gem\ruby\"
   Make-Const ruby_vers_high 40
   # Download locations
-  
+
   # old RI knapsack packages
   Make-Const ri1_pkgs  'https://dl.bintray.com/oneclick/OpenKnapsack'
 
   # used for older MSYS2/MinGW packages, used by 2.4.4
   Make-Const msys_pkgs 'https://dl.bintray.com/msp-greg/MSYS2-MinGW-OpenSSL'
-  
+
   # RI2 packages, at present 2.5 and 32 bit trunk
   Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
   Make-Const ri2_key   'F98B8484BE8BF1C5'
@@ -81,6 +81,7 @@ function Init-AV-Setup {
   Make-Vari  gem_file_name # file name of gem
   Make-Vari  gem_full_name # full name of gem
   Make-Vari  commit_info   # commit info - date, short commit, desc
+  Make-Vari  86_64         # x86 or x64
   Make-Vari  dk_b          # DevKit folder
   Make-Vari  rv_min        # Gem min ruby version
   Make-Vari  rv_max        # Gem max ruby version
@@ -127,7 +128,7 @@ function Check-SetVars {
 
   $isRI2 = $ruby -ge '24'
 
-  # add cert file to ENV
+  # add cert file to ENV, set vari's
   if ( !($isRI2) ) { $env:SSL_CERT_FILE = $SSL_CERT_FILE }
 
   $t = &ruby.exe -e "STDOUT.write Gem.default_dir + '|' + Gem.user_dir"
@@ -146,39 +147,31 @@ function Check-OpenSSL {
   }
 
   # Set OpenSSL versions - 2.4 uses standard MinGW 1.0.2 package
+  $uri = $null
   $openssl_sha = ''
-  $openssl = if ($ruby -lt '20') {
-          'openssl-1.0.0o'             # 1.9.3
-         } elseif ($ruby -lt '22') {
-          'openssl-1.0.1l'             # 2.0, 2.1, 2.2
-         } elseif ($ruby -lt '24') {
-          'openssl-1.0.2j'             # 2.3
-         } elseif ($ruby -lt '25') {
-          $uri = $msys_pkgs            # 2.4
-          'openssl-1.0.2.o'
-         } elseif ($ruby -lt '26') {
-          $uri = $ri2_pkgs             # 2.5
-          $key = $ri2_key
-          'openssl-1.1.0.h'
+  $openssl =   if ($ruby -lt '20') { 'openssl-1.0.0o'
+         } elseif ($ruby -lt '22') { 'openssl-1.0.1l'
+         } elseif ($ruby -lt '24') { 'openssl-1.0.2j'
+         } elseif ($ruby -lt '25') { 'openssl-1.0.2.p'
+          $uri = $msys_pkgs ; $msys2_rev = '1'
+         } elseif ($ruby -lt '26') { 'openssl-1.1.1'
+         } elseif ($ruby -lt '27') { 'openssl-1.1.1'
          } elseif ($is64) {
-          $uri = $rubyloco             # 2.6 64 bit ruby-loco
-          $key = $null
+#          $uri = $rubyloco             # 2.6 64 bit ruby-loco
+#          $key = $null
           # OpenSSL 1.1.1 release
-          $openssl_sha = '0c8be3277693f60c319f997659c2fed0eadce8535aed29a4617ec24da082b60ee30a03d3fe1024dae4461041e6e9a5e5cff1a68fa08b4b8791ea1bf7b02abc40'
+#          $openssl_sha = '0c8be3277693f60c319f997659c2fed0eadce8535aed29a4617ec24da082b60ee30a03d3fe1024dae4461041e6e9a5e5cff1a68fa08b4b8791ea1bf7b02abc40'
           'openssl-1.1.1'
          } else {
-          $uri = $ri2_pkgs             # 2.6 32 bit
-          $key = $ri2_key
-          'openssl-1.1.0.h'
+#          $uri = $ri2_pkgs             # 2.6 32 bit
+#          $key = $ri2_key
+          'openssl-1.1.1'
          }
 
   $bit = if ($is64) { '64 bit' } else { '32 bit'}
 
   if (!$isRI2) {
     #——————————————————————————————————————————————————————————————————— RubyInstaller
-    if ($is64) { $86_64 = 'x64' ; $dk_b = 'x86_64-w64-mingw32' }
-    else       { $86_64 = 'x86' ; $dk_b = 'i686-w64-mingw32'   }
-
     if ($ssl_vhash[$86_64] -ne $openssl) {
       # Install it
       if ($is64) { Package-DevKit $openssl 64
@@ -190,8 +183,8 @@ function Check-OpenSSL {
     }
 
     $DKu = $DKw.Replace('\', '/')
-    $env:SSL_CERT_FILE = $SSL_CERT_FILE
-    $env:OPENSSL_CONF  = "$DKu/mingw/ssl/openssl.cnf"
+#    $env:SSL_CERT_FILE = $SSL_CERT_FILE
+    $env:OPENSSL_CONF  = "$DKu/mingw/$dk_b/ssl/openssl.cnf"
     $env:SSL_VERS = (&"$DKu/mingw/$dk_b/bin/openssl.exe" version | Out-String).Trim()
   } else {
     #—————————————————————————————————————————————————————————————————— RubyInstaller2
@@ -203,7 +196,7 @@ function Check-OpenSSL {
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
         pacman.exe -S   --noconfirm --noprogressbar $($m_pre + 'openssl')
       } else {
-        $openssl = "$m_pre$openssl-1-any.pkg.tar.xz"
+        $openssl_fn = "$m_pre$openssl-$msys2_rev-any.pkg.tar.xz"
 
         if ($key) {
           #——————————————————————————————————————————————————————————————— Add GPG key
@@ -226,26 +219,26 @@ function Check-OpenSSL {
           Write-Host "signing key" -ForegroundColor Yellow
           bash.exe -c "pacman-key -f $key && pacman-key --lsign-key $key" 2>$null
 
-          if( !(Test-Path -Path $pkgs/$openssl.sig -PathType Leaf) ) {
-            $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
+          if( !(Test-Path -Path $pkgs/$openssl_fn.sig -PathType Leaf) ) {
+            $wc.DownloadFile("$uri/$openssl_fn.sig", "$pkgs/$openssl_fn.sig")
           }
         }
 
-        if( !(Test-Path -Path $pkgs/$openssl -PathType Leaf) ) {
-          $wc.DownloadFile("$uri/$openssl"      , "$pkgs/$openssl")
+        if( !(Test-Path -Path $pkgs/$openssl_fn -PathType Leaf) ) {
+          $wc.DownloadFile("$uri/$openssl_fn"      , "$pkgs/$openssl_fn")
           if ($openssl_sha -ne '') {
-            Check-SHA $pkgs $openssl $uri $openssl_sha
+            Check-SHA $pkgs $openssl_fn $uri $openssl_sha
           } else {
-            $wc.DownloadFile("$uri/$openssl.sig", "$pkgs/$openssl.sig")
+            $wc.DownloadFile("$uri/$openssl_fn.sig", "$pkgs/$openssl_fn.sig")
           }
         }
 
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
         $pkgs_u = $pkgs.replace('\', '/')
-        pacman.exe -Udd --noconfirm --noprogressbar $pkgs_u/$openssl
+        pacman.exe -Udd --noconfirm --noprogressbar $pkgs_u/$openssl_fn
         Check-Exit "Package Install failure!"
       }
-      $ssl_vhash[$mingw] = $t
+      $ssl_vhash[$mingw] = $openssl
     } else {
       Write-Host MSYS2/MinGW - $openssl $bit - Already installed -ForegroundColor $fc
     }
@@ -551,15 +544,17 @@ Init-AV-Setup
 # load r_archs
 [int]$temp = $args[0]
 if ($temp -eq 32) {
+  $dk_b   = 'i686-w64-mingw32'
   $r_plat = 'i386-mingw32' ; $mingw  = 'mingw32'
   $g_plat =  'x86-mingw32' ; $m_pre  = 'mingw-w64-i686-'
   $suf    = ''             ; $DKw    = $DK32w
-  $is64   = $false
+  $is64   = $false         ; $86_64  = 'x86'
 } elseif ($temp -eq 64) {
+  $dk_b   = 'x86_64-w64-mingw32'
   $r_plat = 'x64-mingw32'  ; $mingw  = 'mingw64'
   $g_plat = 'x64-mingw32'  ; $m_pre  = 'mingw-w64-x86_64-'
   $suf    = '-x64'         ; $DKw    = $DK64w
-  $is64   = $true
+  $is64   = $true          ; $86_64  = 'x64'
 } else {
   Write-Host "Must specify an platform (32 or 64)!" -ForegroundColor $fc
   exit 1
