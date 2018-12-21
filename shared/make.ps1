@@ -102,7 +102,7 @@ $env:path = $dir_ruby + "25-x64\bin;$base_path"
 
 Push-Location $dir_gem
 $env:commit_info = $commit_info
-$upper_ruby_vers = $rv_max + ".0.a"
+$upper_ruby_vers = $rv_max + ".0.A"
 ruby.exe $dir_ps\package_gem.rb $g_plat $rv_min $upper_ruby_vers | Tee-Object -Variable bytes
 Pop-Location
 Check-Exit
