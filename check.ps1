@@ -20,6 +20,10 @@ foreach ($ruby in $rubies) {
   Write-Host "$($dash * 60) $ruby$suf setup" -ForegroundColor $fc
   Check-SetVars
 
+  Write-Host "$($dash * 40) git & path"
+  git version
+  Write-Host $env:path
+  
   # Add build system bin folders to path
   if ($isRI2) {
     $ssl_exe = "$msys2\$mingw\bin\openssl.exe"
@@ -35,8 +39,6 @@ foreach ($ruby in $rubies) {
   ruby -ropenssl -e "puts OpenSSL::OPENSSL_VERSION"
   ruby -ropenssl -e "puts OpenSSL::OPENSSL_LIBRARY_VERSION if OpenSSL.const_defined?(:OPENSSL_LIBRARY_VERSION)"
   &$ssl_exe version
-  git version
-  Write-Host $env:path
 }
 
 if ($in_av -and $args[0] -eq '64') {
