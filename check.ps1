@@ -20,7 +20,7 @@ foreach ($ruby in $rubies) {
   Write-Host "$($dash * 60) $ruby$suf setup" -ForegroundColor $fc
   Check-SetVars
 
-  Write-Host "$($dash * 40) git & path"
+  Write-Host "$($dash * 40) git & path" -ForegroundColor $fc
   git version
   Write-Host $env:path
   
