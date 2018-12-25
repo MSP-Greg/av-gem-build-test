@@ -27,9 +27,9 @@ function Init-AV-Setup {
 
     # Use simple base path without all Appveyor additions
     Make-Const base_path `
-    'C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;' `
-    + 'C:\WINDOWS\System32\WindowsPowerShell\v1.0\;' `
-    + 'C:\Program Files\Git\cmd;C:\Program Files\AppVeyor\BuildAgent'
+    $('C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;' `
+    + 'C:\Windows\System32\WindowsPowerShell\v1.0\;' `
+    + 'C:\Program Files\Git\cmd;C:\Program Files\AppVeyor\BuildAgent')
 
     Make-Const 7z        "$env:ProgramFiles\7-Zip\7z.exe"
     Make-Const fc        'Yellow'
