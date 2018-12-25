@@ -291,15 +291,20 @@ function Install-New($new_path, $new_vers) {
   Write-Host "Download started $dn"
   $fn = "$env:TEMP\$dn" + ".7z"
   $new_uri += "$dn" + ".7z"
-  $wc.DownloadFile($new_uri, $fn)
-  Write-Host "Download finished"
 
-  Write-Host "Extracting"
-  $tp = "-o" + $dir_ruby -replace '\\[^\\]*$', ''
-  &$7z x $fn $tp 1> $null
-  $tp = $($dir_ruby -replace '\\[^\\]*$', '') + '\' + $dn
-  Rename-Item -Path $tp -NewName $new_path
-  Write-Host "Installed"
+  try {
+    $wc.DownloadFile($new_uri, $fn)
+    Write-Host "Download finished"
+
+    Write-Host "Extracting"
+    $tp = "-o" + $dir_ruby -replace '\\[^\\]*$', ''
+    &$7z x $fn $tp 1> $null
+    $tp = $($dir_ruby -replace '\\[^\\]*$', '') + '\' + $dn
+    Rename-Item -Path $tp -NewName $new_path
+    Write-Host "Installed"
+  } catch {
+    Write-Host "$dn is not available, skipping"  -ForegroundColor Red
+  }
 }
 
 #——————————————————————————————————————————————————————————————————————— Install-Trunk
