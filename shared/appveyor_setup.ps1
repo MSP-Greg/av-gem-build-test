@@ -4,7 +4,7 @@
 
 $LastExitCode = $null
 
-#———————————————————————————————————————————————————————————————————————————————— Init
+#—————————————————————————————————————————————————————————————————————————— Init
 # below sets constants & variables for use, use local_paths.ps1 for a local run
 function Init-AV-Setup {
   if ($env:APPVEYOR) {
@@ -26,7 +26,9 @@ function Init-AV-Setup {
     Make-Const pkgs      "$( Convert-Path $pkgs_temp )"
 
     # Use simple base path without all Appveyor additions
-    Make-Const base_path 'C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\Program Files\Git\cmd;C:\Program Files\AppVeyor\BuildAgent'
+    Make-Const base_path 'C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;' + `
+                         'C:\WINDOWS\System32\WindowsPowerShell\v1.0\;' + `
+                         'C:\Program Files\Git\cmd;C:\Program Files\AppVeyor\BuildAgent'
 
     Make-Const 7z        "$env:ProgramFiles\7-Zip\7z.exe"
     Make-Const fc        'Yellow'
@@ -53,7 +55,8 @@ function Init-AV-Setup {
 
   # download URI's for trunk builds, ruby-loco is only 64 bit, RI2 builds 32 bit
   Make-Const trunk_uri_64  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z'
-  Make-Const trunk_uri_32  'https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x86.7z'
+  Make-Const ri2_release   'https://github.com/oneclick/rubyinstaller2/releases/download'
+  Make-Const trunk_uri_32  "$ri2_release/rubyinstaller-head/rubyinstaller-head-x86.7z"
   Make-Const trunk_32_root 'rubyinstaller-head-x86'
 
   # Misc
@@ -104,7 +107,7 @@ function Make-Const($N, $V) {
   New-Variable -Name $N -Value $V  -Scope Script -Option AllScope, Constant
 }
 
-#——————————————————————————————————————————————————————————————————————————— Make-Vari
+#—————————————————————————————————————————————————————————————————————————— Make-Vari
 # available in all session scripts
 function Make-Vari($N, $V) {
   try { New-Variable -Name $N -Value $V  -Scope Script -Option AllScope -ErrorAction "Stop" }
@@ -246,7 +249,7 @@ function Check-OpenSSL {
   }
 }
 
-#——————————————————————————————————————————————————————————————————————————— Check_SHA
+#—————————————————————————————————————————————————————————————————————————— Check_SHA
 # checks SHA512 from file, script variable & Appveyor message
 function Check-SHA($path, $file, $uri_dl, $sha_local) {
   $uri_bld = $uri_dl -replace '/artifacts$', ''
@@ -275,6 +278,29 @@ function Check-SHA($path, $file, $uri_dl, $sha_local) {
   }
 }
 
+#——————————————————————————————————————————————————————————————————————— Install-New
+# Loads newest Ruby version, as it may not exist on Appveyor
+function Install-New($new_path, $new_vers) {
+  Write-Host new_path $new_path
+  Write-Host new_vers $new_vers
+  $dn = "rubyinstaller-" + $new_vers
+  $new_uri = "$ri2_release/$dn/"
+  if ($is64) { $dn += "-x64" } else { $dn += "-x86" }
+
+  Write-Host "Download started $dn"
+  $fn = "$env:TEMP\$dn" + ".7z"
+  $new_uri += "$dn" + ".7z"
+  $wc.DownloadFile($new_uri, $fn)
+  Write-Host "Download finished"
+
+  Write-Host "Extracting"
+  $tp = "-o" + $dir_ruby -replace '\\[^\\]*$', ''
+  &$7z x $fn $tp 1> $null
+  $tp = $($dir_ruby -replace '\\[^\\]*$', '') + '\' + $dn
+  Rename-Item -Path $tp -NewName $new_path
+  Write-Host "Installed"
+}
+
 #——————————————————————————————————————————————————————————————————————— Install-Trunk
 # Loads trunk into ruby99 or ruby99-x64
 function Install-Trunk {
@@ -300,10 +326,17 @@ function Install-Trunk {
     Remove-Item -LiteralPath $fn -Force
     Write-Host "finished" -ForegroundColor $fc
   } else {
-    Write-Host "using existing trunk install" -ForegroundColor $fc
+    Write-Host "using existing trunk install at $trunk_path" -ForegroundColor $fc
   }
   $trunk_exe = $trunk_path + "\bin\ruby.exe"
-  return &"$trunk_path\bin\ruby.exe" -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/]"
+  # check for Ruby version behind trunk
+  $two = $(&$trunk_exe -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/].tr('.','').to_i - 1")
+  $new_dir = "$dir_ruby$two$suf"
+  if ( !(Test-Path -Path $new_dir -PathType Container) ) {
+    $t = $two[0] + "." + $two[1] + ".0-1"
+    Install-new $new_dir $t
+  }
+  return &$trunk_exe -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/]"
 }
 
 #————————————————————————————————————————————————————————————————————————  Load-Rubies
