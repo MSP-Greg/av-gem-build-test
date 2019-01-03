@@ -285,7 +285,7 @@ function Install-New($new_path, $new_vers) {
   Write-Host new_path $new_path
   Write-Host new_vers $new_vers
   $dn = "rubyinstaller-" + $new_vers
-  $new_uri = "$ri2_release/$dn/"
+  $new_uri = "$ri2_release/RubyInstaller-$new_vers/"
   if ($is64) { $dn += "-x64" } else { $dn += "-x86" }
 
   Write-Host "Download started $dn"
