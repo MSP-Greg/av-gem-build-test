@@ -44,14 +44,14 @@ function Init-AV-Setup {
   # old RI knapsack packages
   Make-Const ri1_pkgs  'https://dl.bintray.com/oneclick/OpenKnapsack'
 
-  # used for older MSYS2/MinGW packages, used by 2.4.4
+  # used for very old MSYS2/MinGW packages, as of 2019-01, none needed
   Make-Const msys_pkgs 'https://dl.bintray.com/msp-greg/MSYS2-MinGW-OpenSSL'
 
-  # RI2 packages, at present 2.5 and 32 bit trunk
+  # RI2 packages, as of 2019-01, only Ruby 2.4 OpenSSL 1.0.2p
   Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
   Make-Const ri2_key   'F98B8484BE8BF1C5'
 
-  # used for latest, greatest OpenSSL, used by ruby-loco (64 bit trunk)
+  # used for OpenSSL beta & pre-release packages, only used by ruby-loco (64 bit trunk)
   Make-Const rubyloco  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-makepkg-mingw/artifacts'
 
   # download URI's for trunk builds, ruby-loco is only 64 bit, RI2 builds 32 bit
@@ -157,17 +157,18 @@ function Check-OpenSSL {
          } elseif ($ruby -lt '22') { 'openssl-1.0.1l'
          } elseif ($ruby -lt '24') { 'openssl-1.0.2j'
          } elseif ($ruby -lt '25') { 'openssl-1.0.2.p'
-          $uri = $msys_pkgs ; $msys2_rev = '1'
+           $uri = $ri2_pkgs
+           $key = $ri2_key
+           $msys2_rev = '1'
          } elseif ($ruby -lt '26') { 'openssl-1.1.1'
          } elseif ($ruby -lt '27') { 'openssl-1.1.1'
          } elseif ($is64) {
-#          $uri = $rubyloco             # 2.6 64 bit ruby-loco
+#          $uri = $rubyloco             # 2.7 64 bit ruby-loco, may use OpenSSL beta
 #          $key = $null
-          # OpenSSL 1.1.1 release
 #          $openssl_sha = '0c8be3277693f60c319f997659c2fed0eadce8535aed29a4617ec24da082b60ee30a03d3fe1024dae4461041e6e9a5e5cff1a68fa08b4b8791ea1bf7b02abc40'
           'openssl-1.1.1'
          } else {
-#          $uri = $ri2_pkgs             # 2.6 32 bit
+#          $uri = $ri2_pkgs             # 2.7 32 bit
 #          $key = $ri2_key
           'openssl-1.1.1'
          }
@@ -175,7 +176,7 @@ function Check-OpenSSL {
   $bit = if ($is64) { '64 bit' } else { '32 bit'}
 
   if (!$isRI2) {
-    #——————————————————————————————————————————————————————————————————— RubyInstaller
+    #————————————————————————————————————————————————————————————————— RubyInstaller
     if ($ssl_vhash[$86_64] -ne $openssl) {
       # Install it
       if ($is64) { Package-DevKit $openssl 64
@@ -191,7 +192,7 @@ function Check-OpenSSL {
     $env:OPENSSL_CONF  = "$DKu/mingw/$dk_b/ssl/openssl.cnf"
     $env:SSL_VERS = (&"$DKu/mingw/$dk_b/bin/openssl.exe" version | Out-String).Trim()
   } else {
-    #—————————————————————————————————————————————————————————————————— RubyInstaller2
+    #———————————————————————————————————————————————————————————————— RubyInstaller2
     if ($ssl_vhash[$mingw] -ne $openssl) {
       Write-Host MSYS2/MinGW - $openssl $bit - Retrieving and Installing -ForegroundColor $fc
 
