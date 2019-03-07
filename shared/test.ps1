@@ -252,7 +252,11 @@ foreach ($ruby in $rubies) {
     Write-Host "`n$($dash * 75) Testing $ruby_desc" -ForegroundColor $fc
     if ($loop -eq 1) {
       if (!$in_av)  { gem uninstall $gem_name -x -a }
-      gem install $gem_full_path -N
+      $o = $(gem install $gem_full_path -N 2>&1)
+      if ($LastExitCode -ne 0) {
+        Write-Host "Gem cannot be installed!" -ForegroundColor $fc
+        Write-Host $o
+      }
     }
 
     # Find where gem was installed - default or user

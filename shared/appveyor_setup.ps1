@@ -44,12 +44,14 @@ function Init-AV-Setup {
   # old RI knapsack packages
   Make-Const ri1_pkgs  'https://dl.bintray.com/oneclick/OpenKnapsack'
 
-  # used for very old MSYS2/MinGW packages, as of 2019-01, none needed
+  # used for very old MSYS2/MinGW packages, as of 2019-01, OpenSSL 1.0.2p
   Make-Const msys_pkgs 'https://dl.bintray.com/msp-greg/MSYS2-MinGW-OpenSSL'
 
   # RI2 packages, as of 2019-01, only Ruby 2.4 OpenSSL 1.0.2p
   Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
   Make-Const ri2_key   'F98B8484BE8BF1C5'
+
+  Make-Const sf_pkgs   'https://sourceforge.net/projects/msys2/files/REPOS/MINGW'
 
   # used for OpenSSL beta & pre-release packages, only used by ruby-loco (64 bit trunk)
   Make-Const rubyloco  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-makepkg-mingw/artifacts'
@@ -157,8 +159,8 @@ function Check-OpenSSL {
          } elseif ($ruby -lt '22') { 'openssl-1.0.1l'
          } elseif ($ruby -lt '24') { 'openssl-1.0.2j'
          } elseif ($ruby -lt '25') { 'openssl-1.0.2.p'
-           $uri = $ri2_pkgs
-           $key = $ri2_key
+           $uri = $msys_pkgs
+           # $key = $ri2_key
            $msys2_rev = '1'
          } elseif ($ruby -lt '26') { 'openssl-1.1.1'
          } elseif ($ruby -lt '27') { 'openssl-1.1.1'
