@@ -253,17 +253,17 @@ foreach ($ruby in $rubies) {
     if ($loop -eq 1) {
       if (!$in_av)  { gem uninstall $gem_name -x -a }
       $o = $(gem install $gem_full_path -N 2>&1)
-      if ($LastExitCode -ne 0) {
-        Write-Host "Gem cannot be installed!" -ForegroundColor $fc
-        Write-Host $o
-      }
+      Write-Host $o
     }
 
     # Find where gem was installed - default or user
     $rake_dir = $gem_dflt + '/gems/' + $gem_full_name
     if ( !(Test-Path -Path $rake_dir -PathType Container) ) {
       $rake_dir = "$gem_user/gems/$gem_full_name"
-      if ( !(Test-Path -Path $rake_dir -PathType Container) ) { continue }
+      if ( !(Test-Path -Path $rake_dir -PathType Container) ) {
+        Write-Host "Improper gem installation!" -ForegroundColor $fc
+        continue
+      }
     }
     $ruby_v = ruby.exe -v
     $ruby_v_a = [regex]::split( $ruby_v.Replace(" [$r_plat]", '').Trim(), ' \(')
