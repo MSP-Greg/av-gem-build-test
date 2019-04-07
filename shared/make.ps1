@@ -20,7 +20,7 @@ if (Get-Command Repo-Changes -errorAction SilentlyContinue) { Repo-Changes }
 if ($write_so_require) {
   foreach ($ext in $exts) {
     $file_text = "require_relative `"#{RUBY_VERSION[/\A\d+\.\d+/]}/" + $ext.so + "`"`n"
-    $fn = "$dir_gem\$dest_so\" + $ext.so + '.rb'
+    $fn = "$dir_gem/$dest_so/" + $ext.so + '.rb'
     # below needed to write UTF8 file without BOM
     [IO.File]::WriteAllText($fn, $file_text, $UTF8)
   }
@@ -36,6 +36,15 @@ Pop-Location
 [string[]]$so_dests = @()
 
 Load-Rubies
+
+if ($env:b_config) {
+  # $b_config = "--with-ldflags=`"-static-libgcc -static-libstdc++`"`n$env:b_config"
+  $b_config = $env:b_config
+} else {
+  # $b_config = "--with-ldflags=`"-static-libgcc -static-libstdc++`""
+  $b_config = $null
+}
+
 foreach ($ruby in $rubies) {
   # Loop if ruby version does not exist
   if ( !(Test-Path -Path $dir_ruby$ruby$suf -PathType Container) ) { continue }
@@ -65,17 +74,17 @@ foreach ($ruby in $rubies) {
   $so_dests += $dest
   foreach ($ext in $exts) {
     $so = $ext.so
-    $src_dir = "$dir_gem\tmp\$r_plat\$so\$abi_vers"
+    $src_dir = "$dir_gem/tmp/$r_plat/$so/$abi_vers"
     New-Item -Path $src_dir -ItemType Directory 1> $null
 
     Push-Location -Path $src_dir
     Write-Host "`n$($dash * 50)" Compiling $(Ruby-Desc) $ext.so -ForegroundColor $fc
-    if ($env:b_config) {
-      Write-Host "options:$($env:b_config.replace("--", "`n   --"))" -ForegroundColor $fc
+    if ($b_config) {
+      Write-Host "options:$($b_config.replace("--", "`n   --"))" -ForegroundColor $fc
     }
     # Invoke-Expression needed due to spaces in $env:b_config
-    Write-Host "ruby.exe -I. $dir_gem\$($ext.conf) $env:b_config" -ForegroundColor $fc
-    iex "ruby.exe -I. $dir_gem\$($ext.conf) $env:b_config"
+    Write-Host "ruby.exe -I. $dir_gem/$($ext.conf) $b_config" -ForegroundColor $fc
+    iex "ruby.exe -I. $dir_gem/$($ext.conf) $b_config"
     if ($isRI2) {
       Write-Host "make.exe -j2" -ForegroundColor $fc
       make.exe -j2

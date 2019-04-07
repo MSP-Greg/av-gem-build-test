@@ -416,7 +416,6 @@ function Package-DevKit($pkg, $b) {
 
 #——————————————————————————————————————————————————————————————————————— Package-MSYS2
 function Package-MSYS2($pkg) {
-  Check-SetVars
   $s = if ($need_refresh) { '-Sy' } else { '-S' }
   try   { &"$msys2\usr\bin\pacman.exe" $s --noconfirm --needed --noprogressbar $m_pre$pkg }
   catch { Write-Host "Cannot install/update $pkg package" }
@@ -491,12 +490,12 @@ function Update-Gems($str_gems) {
   $update  = $update.trim(' ')
 
   if ($update)  {
-    Write-Host "gem update $update -N -q -f" -ForegroundColor $fc
-    iex "gem update $update -N -q -f"
+    Write-Host "gem update $update -N -q -f --norc" -ForegroundColor $fc
+    iex "gem update $update -N -q -f --norc"
   }
   if ($install) {
-    Write-Host "gem install $install -N -q -f" -ForegroundColor $fc
-    iex "gem install $install -N -q -f"
+    Write-Host "gem install $install -N -q -f --norc" -ForegroundColor $fc
+    iex "gem install $install -N -q -f --norc"
   }
   gem cleanup
 
