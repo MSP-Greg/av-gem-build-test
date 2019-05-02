@@ -86,9 +86,8 @@ foreach ($ruby in $rubies) {
     Write-Host "ruby.exe -I. $dir_gem/$($ext.conf) $b_config" -ForegroundColor $fc
     iex "ruby.exe -I. $dir_gem/$($ext.conf) $b_config"
     if ($isRI2) {
-      # remove -j2 to check issue
-      Write-Host "make.exe" -ForegroundColor $fc
-      make.exe
+      Write-Host "make.exe -j2" -ForegroundColor $fc
+      make.exe -j2
     } else {
       Write-Host "make.exe" -ForegroundColor $fc
       make.exe
