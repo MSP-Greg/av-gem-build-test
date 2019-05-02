@@ -37,14 +37,6 @@ Pop-Location
 
 Load-Rubies
 
-if ($env:b_config) {
-  # $b_config = "--with-ldflags=`"-static-libgcc -static-libstdc++`"`n$env:b_config"
-  $b_config = $env:b_config
-} else {
-  # $b_config = "--with-ldflags=`"-static-libgcc -static-libstdc++`""
-  $b_config = $null
-}
-
 foreach ($ruby in $rubies) {
   # Loop if ruby version does not exist
   if ( !(Test-Path -Path $dir_ruby$ruby$suf -PathType Container) ) { continue }
@@ -79,8 +71,11 @@ foreach ($ruby in $rubies) {
 
     Push-Location -Path $src_dir
     Write-Host "`n$($dash * 50)" Compiling $(Ruby-Desc) $ext.so -ForegroundColor $fc
-    if ($b_config) {
+    if ($env:b_config) {
+      $b_config = $env:b_config
       Write-Host "options:$($b_config.replace("--", "`n   --"))" -ForegroundColor $fc
+    } else {
+      $b_config = $null
     }
     # Invoke-Expression needed due to spaces in $env:b_config
     Write-Host "ruby.exe -I. $dir_gem/$($ext.conf) $b_config" -ForegroundColor $fc

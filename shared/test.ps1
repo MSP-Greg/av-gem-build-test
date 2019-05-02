@@ -271,6 +271,9 @@ foreach ($ruby in $rubies) {
     ruby.exe -v
     Push-Location $rake_dir
     Run-Tests
+    if ($LastExitCode -and $LastExitCode -ne 0) {
+      Write-Host "**************************  TESTS FAILED" -ForegroundColor $fc
+    }
     Pop-Location
   }
 }
