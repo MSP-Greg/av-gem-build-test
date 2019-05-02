@@ -96,7 +96,8 @@ function Init-AV-Setup {
   Make-Vari  exit_code          # ExitCode from last exe
   Make-Vari  ttl_errors_fails 0 # Total of tests across all versions
 
-  Make-Vari  need_refresh     $true  # flag for whether to MSYS2 needs a refresh
+  Make-Vari  need_refresh     $true  # flag for whether MSYS2 needs a refresh
+  Make-Vari  need_refresh_db  $true  # flag for whether MSYS2 database needs a refresh
   Make-Vari  msys_full        $false # true to do a full MSYS2 update -Syu
   Make-Vari  ssl_vhash        @{}    # hash of ssl version, key is build system folder
 
@@ -420,7 +421,7 @@ function Package-MSYS2($pkg) {
   try   { &"$msys2\usr\bin\pacman.exe" $s --noconfirm --needed --noprogressbar $m_pre$pkg }
   catch { Write-Host "Cannot install/update $pkg package" }
   if (!$ri2 -And $pkg -eq 'ragel') { $env:path += ";$msys2\$mingw\bin" }
-  $need_refresh = $false
+  $need_refresh_db = false
 }
 
 #——————————————————————————————————————————————————————————————————————————— Path-Make
@@ -520,9 +521,11 @@ function Update-MSYS2 {
       pacman.exe -Su --noconfirm --noprogressbar
 
     } else {
-      Write-Host "$($dash * 63) Updating MSYS2 / MinGW" -ForegroundColor $fc
-      Write-Host "pacman.exe -Sy --noconfirm --needed --noprogressbar" -ForegroundColor $fc
-      pacman.exe -Sy --noconfirm --needed --noprogressbar
+      if ($need_refresh_db) {
+        Write-Host "$($dash * 65) Updating MSYS2 / MinGW" -ForegroundColor $fc
+        Write-Host "pacman.exe -Sy --noconfirm --needed --noprogressbar" -ForegroundColor $fc
+        pacman.exe -Sy --noconfirm --needed --noprogressbar
+      }
 
 <#———————————————————————————————————————————————————————————————————————— 30-Aug-2018
 
