@@ -57,11 +57,15 @@ function Get-Std-Out {
 function Process-Log {
   Write-Host $ruby_v
   Write-Host $commit_info
-  $test_results = [System.Io.File]::ReadAllText($log_name, $UTF8)
-  $test_results +=  "$ruby_v`n$gem_full_name`n$commit_info`n"
   $gem_full_path = "$gem_dflt/gems/$gem_full_name/"
-  $test_results = $test_results.replace("[$gem_full_path", "[")
-  $test_results = $test_results.replace($gem_full_path, "    ").replace("`r", "")
+  if (Test-Path -Path $log_name -PathType leaf) {
+    $test_results = [System.Io.File]::ReadAllText($log_name, $UTF8)
+    $test_results +=  "$ruby_v`n$gem_full_name`n$commit_info`n"
+    $test_results = $test_results.replace("[$gem_full_path", "[")
+    $test_results = $test_results.replace($gem_full_path, "    ").replace("`r", "")
+  } else {
+    $test_results = "Failure - testing aborted?`n$ruby_v`n$commit_info`n"
+  }
   [IO.File]::WriteAllText($log_name, $test_results, $UTF8)
 }
 
@@ -104,7 +108,7 @@ function minitest {
 
   $fail_error_re = '(?ms)(^ {0,2}\d+\) (:?Failure: |Error: ).+?)(?=(^ {0,2}\d+\) (Failure: |Error: |Skipped: )|^\d+ runs,))'
 
-  if ($test_results -match "(?m)^\d+ runs.+ skips") {
+  if ($test_results -match "(?m)^\d+ runs.+ skips" -and !$test_results.StartsWith('Failure')) {
     $ary = ($matches[0] -replace "[^\d]+", ' ').Trim().Split(' ')
     $errors_fails = [int]$ary[2] + [int]$ary[3]
     if ($errors_fails -ne 0) { Add-Fail-Error }
@@ -116,7 +120,7 @@ function minitest {
     if ($in_av) { AV-Test 'Failed' }
     if ($test_use) { $ttl_errors_fails += 1000 }
     $ary = @($(Ruby-Desc)) + $ruby_v_a
-    $test_summary += "`ntesting aborted?                            {0,-11} {1,-15} ({2}" -f $ary
+    $test_summary += "`n *** testing aborted? ***                   {0,-11} {1,-15} ({2}" -f $ary
   }
 }
 
