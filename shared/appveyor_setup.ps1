@@ -491,12 +491,12 @@ function Update-Gems($str_gems) {
   $update  = $update.trim(' ')
 
   if ($update)  {
-    Write-Host "gem update $update -N -q -f --norc" -ForegroundColor $fc
-    iex "gem update $update -N -q -f --norc"
+    Write-Host "gem update $update -N -q -f" -ForegroundColor $fc
+    iex "gem update $update -N -q -f"
   }
   if ($install) {
-    Write-Host "gem install $install -N -q -f --norc" -ForegroundColor $fc
-    iex "gem install $install -N -q -f --norc"
+    Write-Host "gem install $install -N -q -f" -ForegroundColor $fc
+    iex "gem install $install -N -q -f"
   }
   gem cleanup
 
