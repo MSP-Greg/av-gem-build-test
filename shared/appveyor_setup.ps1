@@ -564,20 +564,24 @@ function Update-MSYS2 {
       Write-Host "Updating gnupg" -ForegroundColor Yellow
       pacman.exe -S --noconfirm --needed --noprogressbar gnupg 2> $null
 #>
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
+
+#      Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
 #      Write-Host "pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain')" -ForegroundColor $fc
 #      pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
+#      Check-Exit 'Cannot update toolchain'
 
-      Write-Host "pacman.exe -S --noconfirm --needed --noprogressbar --nodeps $($m_pre + 'toolchain')" -ForegroundColor $fc
-      pacman.exe -S --noconfirm --needed --noprogressbar --nodeps $($m_pre + 'toolchain') 2> $null
-
-      Check-Exit 'Cannot update toolchain'
-
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW ruby depends" -ForegroundColor Yellow
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW ruby depends1" -ForegroundColor Yellow
       # 2019-05-29 below only needed until next Appveyor image update
       $tools = "___python3 ___readline ___sqlite3".replace('___', $m_pre)
       pacman.exe -S --noconfirm --needed --noprogressbar $tools.split(' ')
+      Check-Exit 'Cannot update ruby depends1'
 
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
+      Write-Host "pacman.exe -S --noconfirm --needed --noprogressbar --nodeps $($m_pre + 'toolchain')" -ForegroundColor $fc
+      pacman.exe -S --noconfirm --needed --noprogressbar --nodeps $($m_pre + 'toolchain') 2> $null
+      Check-Exit 'Cannot update toolchain'
+
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW ruby depends2" -ForegroundColor Yellow
       $tools =  "___gdbm ___gmp ___libffi ___pdcurses ___readline ___zlib".replace('___', $m_pre)
       pacman.exe -S --noconfirm --needed --noprogressbar $tools.split(' ') 2> $null
       Check-Exit 'Cannot update Ruby dependencies'
