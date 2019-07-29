@@ -255,6 +255,7 @@ foreach ($ruby in $rubies) {
 
     Write-Host "`n$($dash * 75) Testing $ruby_desc" -ForegroundColor $fc
     if ($loop -eq 1) {
+      if (Get-Command Pre-Gem-Install -errorAction SilentlyContinue) { Pre-Gem-Install }
       if (!$in_av)  { gem uninstall $gem_name -x -a }
       # windows user install may have space in path, tests fail...
       $o = $(gem install -N --no-user-install $gem_full_path 2>&1)
