@@ -343,8 +343,8 @@ function Install-Trunk {
   $two = $(&$trunk_exe -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/].tr('.','').to_i - 1")
   $new_dir = "$dir_ruby$two$suf"
   if ( !(Test-Path -Path $new_dir -PathType Container) ) {
-    # Ruby 2.6.1
-    $t = $two[0] + "." + $two[1] + ".1-1"
+    # Ruby 2.7.0
+    $t = $two[0] + "." + $two[1] + ".0-1"
     Install-new $new_dir $t
   }
   return &$trunk_exe -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/]"
