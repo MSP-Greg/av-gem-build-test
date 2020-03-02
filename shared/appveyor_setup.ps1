@@ -44,8 +44,8 @@ function Init-AV-Setup {
   # old RI knapsack packages
   Make-Const ri1_pkgs  'https://dl.bintray.com/oneclick/OpenKnapsack'
 
-  # used for very old MSYS2/MinGW packages, as of 2019-01, OpenSSL 1.0.2p
-  Make-Const msys_pkgs 'https://dl.bintray.com/msp-greg/MSYS2-MinGW-OpenSSL'
+  # used for older MSYS2/MinGW packages, as of 2020-01, OpenSSL 1.0.2t
+  Make-Const msys_pkgs 'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
 
   # RI2 packages, as of 2020-01, only uses Ruby 2.4 OpenSSL 1.0.2t
   Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
@@ -160,8 +160,8 @@ function Check-OpenSSL {
          } elseif ($ruby -lt '22') { 'openssl-1.0.1l'
          } elseif ($ruby -lt '24') { 'openssl-1.0.2j'
          } elseif ($ruby -lt '25') { 'openssl-1.0.2.t'
-           $uri = $msys_pkgs
-           # $key = $ri2_key
+           $uri = $ri2_pkgs
+           $key = $ri2_key
            $msys2_rev = '1'
          } elseif ($ruby -lt '26') { 'openssl-1.1.1.d'
          } elseif ($ruby -lt '27') { 'openssl-1.1.1.d'
@@ -173,7 +173,7 @@ function Check-OpenSSL {
          } else {
 #          $uri = $ri2_pkgs             # 2.7 32 bit
 #          $key = $ri2_key
-          'openssl-1.1.1'
+          'openssl-1.1.1.d'
          }
 
   $bit = if ($is64) { '64 bit' } else { '32 bit'}
