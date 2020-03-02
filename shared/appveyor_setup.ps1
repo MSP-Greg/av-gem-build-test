@@ -47,7 +47,7 @@ function Init-AV-Setup {
   # used for very old MSYS2/MinGW packages, as of 2019-01, OpenSSL 1.0.2p
   Make-Const msys_pkgs 'https://dl.bintray.com/msp-greg/MSYS2-MinGW-OpenSSL'
 
-  # RI2 packages, as of 2019-01, only Ruby 2.4 OpenSSL 1.0.2p
+  # RI2 packages, as of 2020-01, only uses Ruby 2.4 OpenSSL 1.0.2t
   Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
   Make-Const ri2_key   'F98B8484BE8BF1C5'
 
@@ -159,17 +159,17 @@ function Check-OpenSSL {
   $openssl =   if ($ruby -lt '20') { 'openssl-1.0.0o'
          } elseif ($ruby -lt '22') { 'openssl-1.0.1l'
          } elseif ($ruby -lt '24') { 'openssl-1.0.2j'
-         } elseif ($ruby -lt '25') { 'openssl-1.0.2.p'
+         } elseif ($ruby -lt '25') { 'openssl-1.0.2.t'
            $uri = $msys_pkgs
            # $key = $ri2_key
            $msys2_rev = '1'
-         } elseif ($ruby -lt '26') { 'openssl-1.1.1'
-         } elseif ($ruby -lt '27') { 'openssl-1.1.1'
+         } elseif ($ruby -lt '26') { 'openssl-1.1.1.d'
+         } elseif ($ruby -lt '27') { 'openssl-1.1.1.d'
          } elseif ($is64) {
 #          $uri = $rubyloco             # 2.7 64 bit ruby-loco, may use OpenSSL beta
 #          $key = $null
 #          $openssl_sha = '0c8be3277693f60c319f997659c2fed0eadce8535aed29a4617ec24da082b60ee30a03d3fe1024dae4461041e6e9a5e5cff1a68fa08b4b8791ea1bf7b02abc40'
-          'openssl-1.1.1'
+          'openssl-1.1.1.d'
          } else {
 #          $uri = $ri2_pkgs             # 2.7 32 bit
 #          $key = $ri2_key
