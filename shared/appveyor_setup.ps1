@@ -159,21 +159,21 @@ function Check-OpenSSL {
   $openssl =   if ($ruby -lt '20') { 'openssl-1.0.0o'
          } elseif ($ruby -lt '22') { 'openssl-1.0.1l'
          } elseif ($ruby -lt '24') { 'openssl-1.0.2j'
-         } elseif ($ruby -lt '25') { 'openssl-1.0.2.t'
+         } elseif ($ruby -lt '25') { 'openssl-1.0.2.u'
            $uri = $ri2_pkgs
            $key = $ri2_key
            $msys2_rev = '1'
-         } elseif ($ruby -lt '26') { 'openssl-1.1.1.d'
-         } elseif ($ruby -lt '27') { 'openssl-1.1.1.d'
+         } elseif ($ruby -lt '26') { 'openssl-1.1.1.g'
+         } elseif ($ruby -lt '27') { 'openssl-1.1.1.g'
          } elseif ($is64) {
 #          $uri = $rubyloco             # 2.7 64 bit ruby-loco, may use OpenSSL beta
 #          $key = $null
 #          $openssl_sha = '0c8be3277693f60c319f997659c2fed0eadce8535aed29a4617ec24da082b60ee30a03d3fe1024dae4461041e6e9a5e5cff1a68fa08b4b8791ea1bf7b02abc40'
-          'openssl-1.1.1.d'
+          'openssl-1.1.1.g'
          } else {
 #          $uri = $ri2_pkgs             # 2.7 32 bit
 #          $key = $ri2_key
-          'openssl-1.1.1.d'
+          'openssl-1.1.1.g'
          }
 
   $bit = if ($is64) { '64 bit' } else { '32 bit'}
@@ -204,7 +204,7 @@ function Check-OpenSSL {
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
         pacman.exe -S   --noconfirm --noprogressbar $($m_pre + 'openssl')
       } else {
-        $openssl_fn = "$m_pre$openssl-$msys2_rev-any.pkg.tar.xz"
+        $openssl_fn = "$m_pre$openssl-$msys2_rev-any.pkg.tar.zst"
 
         if ($key) {
           #——————————————————————————————————————————————————————————————— Add GPG key
@@ -510,6 +510,7 @@ function Update-Gems($str_gems) {
 # updates MSYS2/MinGW if $isRI2, sets $need_refresh to $false
 # needs paths set to MSYS2 before calling
 function Update-MSYS2 {
+  $pm_args = "--noconfirm --needed --noprogressbar".split(' ')
   if ($need_refresh) {
     if ($msys_full) {
       Write-Host "$($dash * 63) Updating MSYS2 / MinGW" -ForegroundColor $fc
@@ -523,74 +524,43 @@ function Update-MSYS2 {
     } else {
       if ($need_refresh_db) {
         Write-Host "$($dash * 65) Updating MSYS2 / MinGW" -ForegroundColor $fc
-        Write-Host "pacman.exe -Sy --noconfirm --needed --noprogressbar" -ForegroundColor $fc
-        pacman.exe -Sy --noconfirm --needed --noprogressbar
+        Write-Host "pacman.exe -Sy $pm_args" -ForegroundColor $fc
+        pacman.exe -Sy $pm_args
+
+        Write-Host "$($dash * 65) Updating MSYS2 pacman" -ForegroundColor $fc
+        Write-Host "pacman.exe -Sd $pm_args pacman" -ForegroundColor $fc
+        pacman.exe -Sd $pm_args pacman 2> $null
+        Check-Exit 'Cannot update pacman'
+        taskkill /f /fi "MODULES eq msys-2.0.dll"
+
+        Write-Host "$($dash * 65) Updating MSYS2 base" -ForegroundColor $fc
+        Write-Host "pacman.exe -Sd $pm_args base" -ForegroundColor $fc
+        pacman.exe -Sd $pm_args base 2> $null
+        Check-Exit 'Cannot update base'
+        taskkill /f /fi "MODULES eq msys-2.0.dll"
+
+        Write-Host "$($dash * 65) Updating MSYS2 base-devel" -ForegroundColor $fc
+        Write-Host "pacman.exe -Sd $pm_args base-devel" -ForegroundColor $fc
+        pacman.exe -Sd $pm_args base-devel 2> $null
+        Check-Exit 'Cannot update base'
+        taskkill /f /fi "MODULES eq msys-2.0.dll"
       }
 
-<#———————————————————————————————————————————————————————————————————————— 30-Aug-2018
-
-      # Only use below for really outdated systems, as it wil perform a full update
-      # for 'newer' systems...
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW -Syu" -ForegroundColor $fc
-      pacman.exe -Syu --noconfirm --needed --noprogressbar
-      Check-Exit 'Cannot update with -Syu'
-
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW base" -ForegroundColor $fc
-      # change to -Syu if above is commented out
-      pacman.exe -S --noconfirm --needed --noprogressbar base 2> $null
-      Check-Exit 'Cannot update base'
-
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW db gdbm libgdbm libreadline ncurses" -ForegroundColor $fc
-      pacman.exe -Sy --noconfirm --needed --noprogressbar db gdbm libgdbm libreadline ncurses 2> $null
-      Check-Exit 'Cannot update db gdbm libgdbm libreadline ncurses'
-
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW base-devel" -ForegroundColor $fc
-      pacman.exe -S --noconfirm --needed --noprogressbar base-devel 2> $null
-      Check-Exit 'Cannot update base-devel'
-
-      Write-Host "$($dash * 65) Updating gnupg `& depends" -ForegroundColor $fc
-
-      Write-Host "Updating gnupg extended dependencies" -ForegroundColor Yellow
-      #pacman.exe -S --noconfirm --needed --noprogressbar brotli ca-certificates glib2 gmp heimdal-libs icu libasprintf libcrypt
-      #pacman.exe -S --noconfirm --needed --noprogressbar libdb libedit libexpat libffi libgettextpo libhogweed libidn2 liblzma
-      pacman.exe -S --noconfirm --needed --noprogressbar libmetalink libnettle libnghttp2 libopenssl libp11-kit libpcre libpsl 2> $null
-      #pacman.exe -S --noconfirm --needed --noprogressbar libssh2 libtasn1 libunistring libxml2 libxslt openssl p11-kit
-
-      Write-Host "Updating gnupg package dependencies" -ForegroundColor Yellow
-      # below are listed gnupg dependencies
-      pacman.exe -S --noconfirm --needed --noprogressbar bzip2 libassuan libbz2 libcurl libgcrypt libgnutls libgpg-error libiconv 2> $null
-      pacman.exe -S --noconfirm --needed --noprogressbar libintl libksba libnpth libreadline libsqlite nettle pinentry zlib 2> $null
-
-      Write-Host "Updating gnupg" -ForegroundColor Yellow
-      pacman.exe -S --noconfirm --needed --noprogressbar gnupg 2> $null
-#>
-
-#      Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
-#      Write-Host "pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain')" -ForegroundColor $fc
-#      pacman.exe -S --noconfirm --needed --noprogressbar $($m_pre + 'toolchain') 2> $null
-#      Check-Exit 'Cannot update toolchain'
-
-#      Write-Host "$($dash * 65) Updating MSYS2 / MinGW ruby depends1" -ForegroundColor Yellow
-#      # 2019-05-29 below only needed until next Appveyor image update
-#      $tools = "___python3 ___sqlite3".replace('___', $m_pre)
-#      pacman.exe -S --noconfirm --needed --noprogressbar $tools.split(' ')
-#      Check-Exit 'Cannot update ruby depends1'
-
-      Write-Host "$($dash * 65) Updating MSYS2 / MinGW toolchain" -ForegroundColor $fc
-      Write-Host "pacman.exe -S --noconfirm --needed --noprogressbar --nodeps $($m_pre + 'toolchain')" -ForegroundColor $fc
-      pacman.exe -S --noconfirm --needed --noprogressbar --nodeps $($m_pre + 'toolchain') 2> $null
-      Check-Exit 'Cannot update toolchain'
+      Write-Host "$($dash * 65) Updating MSYS2 / MinGW tools" -ForegroundColor $fc
+      $tools = "___make ___binutils ___crt ___headers ___isl ___libiconv ___mpc ___windows-default-manifest ___libwinpthread ___winpthreads  ___gcc-libs ___gcc".replace('___', $m_pre)
+      pacman.exe -Syd $pm_args $tools.split(' ') 2> $null
+      Check-Exit 'Cannot update tools'
 
       # only update packages included on Appveyor
       # no openssl, use Check-OpenSSL
       Write-Host "$($dash * 65) Updating MSYS2 / MinGW ruby depends2" -ForegroundColor Yellow
       $tools =  "___gettext ___gmp ___libffi ___readline ___zlib".replace('___', $m_pre)
-      pacman.exe -S --noconfirm --needed --noprogressbar $tools.split(' ') 2> $null
+      pacman.exe -S $pm_args $tools.split(' ') 2> $null
       Check-Exit 'Cannot update Ruby dependencies'
     }
     if ($in_av) {
       Write-Host "Clean cache & database" -ForegroundColor Yellow
-      Write-Host "pacman.exe -Sc  --noconfirm" -ForegroundColor Yellow
+      Write-Host "pacman.exe -Sc --noconfirm" -ForegroundColor Yellow
       pacman.exe -Sc  --noconfirm
 
     }
