@@ -340,13 +340,13 @@ function Install-Trunk {
   }
   $trunk_exe = $trunk_path + "\bin\ruby.exe"
   # check for Ruby version behind trunk
-  $two = $(&$trunk_exe -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/].tr('.','').to_i - 1")
-  $new_dir = "$dir_ruby$two$suf"
-  if ( !(Test-Path -Path $new_dir -PathType Container) ) {
-    # Ruby 2.7.0
-    $t = $two[0] + "." + $two[1] + ".0-1"
-    Install-new $new_dir $t
-  }
+#  $two = $(&$trunk_exe -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/].tr('.','').to_i - 1")
+#  $new_dir = "$dir_ruby$two$suf"
+#  if ( !(Test-Path -Path $new_dir -PathType Container) ) {
+#    # Ruby 2.7.0
+#    $t = $two[0] + "." + $two[1] + ".0-1"
+#    Install-new $new_dir $t
+#  }
   return &$trunk_exe -e "STDOUT.write RUBY_VERSION[/\A\d+\.\d+/]"
 }
 

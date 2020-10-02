@@ -13,6 +13,7 @@ Make-Const trunk     $false ; Make-Const trunk_x64     $false
 Make-Const trunk_JIT $null  ; Make-Const trunk_x64_JIT $null
 
 Load-Rubies
+
 foreach ($ruby in $rubies) {
   # Loop if ruby version does not exist
   if ( !(Test-Path -Path $dir_ruby$ruby$suf -PathType Container) ) { continue }
