@@ -370,6 +370,8 @@ function Load-Rubies {
   $rubies = @()
   foreach ($v in $vers) {
     if ( $v -eq 19 -and $is64 ) { continue }
+    if ( $v -eq 28 ) { continue }
+    if ( $v -eq 29 ) { continue }
 
     $v = switch ($v) {
       19 { '193' }
