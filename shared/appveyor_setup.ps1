@@ -11,7 +11,7 @@ function Init-AV-Setup {
     $pkgs_temp = "$PSScriptRoot/../packages"
     Path-Make $pkgs_temp
 
-    Make-Const dflt_ruby 'C:\Ruby25-x64'
+    Make-Const dflt_ruby 'C:\Ruby27-x64'
     Make-Const in_av     $true
 
     # MinGW & Base Ruby
@@ -42,16 +42,11 @@ function Init-AV-Setup {
   # Download locations
 
   # old RI knapsack packages
-  Make-Const ri1_pkgs  'https://dl.bintray.com/oneclick/OpenKnapsack'
+  Make-Const ri1_pkgs  'https://github.com/oneclick/knapsack-recipes/releases/download'
 
-  # used for older MSYS2/MinGW packages, as of 2020-01, OpenSSL 1.0.2t
-  Make-Const msys_pkgs 'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
-
-  # RI2 packages, as of 2020-01, only uses Ruby 2.4 OpenSSL 1.0.2t
-  Make-Const ri2_pkgs  'https://dl.bintray.com/larskanis/rubyinstaller2-packages'
+  # RI2 packages, as of 2021-05, only uses Ruby 2.4 OpenSSL 1.0.2u
+  Make-Const ri2_pkgs  'https://github.com/MSP-Greg/ruby-loco/releases/download/old-ruby'
   Make-Const ri2_key   'F98B8484BE8BF1C5'
-
-  Make-Const sf_pkgs   'https://sourceforge.net/projects/msys2/files/REPOS/MINGW'
 
   # used for OpenSSL beta & pre-release packages, only used by ruby-loco (64 bit trunk)
   Make-Const rubyloco  'https://ci.appveyor.com/api/projects/MSP-Greg/ruby-makepkg-mingw/artifacts'
@@ -163,8 +158,8 @@ function Check-OpenSSL {
            $uri = $ri2_pkgs
            $key = $ri2_key
            $msys2_rev = '1'
-         } elseif ($ruby -lt '26') { 'openssl-1.1.1.g'
-         } elseif ($ruby -lt '27') { 'openssl-1.1.1.g'
+         } elseif ($ruby -lt '26') { 'openssl-1.1.1.k'
+         } elseif ($ruby -lt '27') { 'openssl-1.1.1.k'
          } elseif ($is64) {
 #          $uri = $rubyloco             # 2.7 64 bit ruby-loco, may use OpenSSL beta
 #          $key = $null
@@ -382,6 +377,8 @@ function Load-Rubies {
     if ( !(Test-Path -Path $dir_ruby$v$suf -PathType Container) ) { continue }
     $rubies += $v
   }
+  echo $rubies
+  exit
   $rv_min = $rubies[-1].Substring(0,1) + '.' + $rubies[-1].Substring(1,1)
   if ($run_trunk) {
     # set $rv_max equal to one minor version above trunk
@@ -407,7 +404,7 @@ function Package-DevKit($pkg, $b) {
     # Download & upzip into DK folder
     $pkg_i = $pkg + '-' + $86_64 + '-windows.tar.lzma'
     if( !(Test-Path -Path $pkgs/$pkg_i -PathType Leaf) ) {
-      $wc.DownloadFile("$ri1_pkgs/$86_64/$pkg_i", "$pkgs/$pkg_i")
+      $wc.DownloadFile("$ri1_pkgs/$pkg/$pkg_i", "$pkgs/$pkg_i")
     }
     $t = '-o' + $pkgs
     &$7z e -y $pkgs\$pkg_i $t 1> $null

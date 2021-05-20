@@ -9,7 +9,7 @@ cd C:\Greg\GitHub\av-gem-build-test
 Make-Const ruby_vers_low 19
 # null = don't compile; false = compile, ignore test (allow failure);
 # true = compile & test
-Make-Const trunk     $false ; Make-Const trunk_x64     $false
+Make-Const trunk     $null ; Make-Const trunk_x64     $null
 Make-Const trunk_JIT $null  ; Make-Const trunk_x64_JIT $null
 
 Load-Rubies
@@ -24,7 +24,7 @@ foreach ($ruby in $rubies) {
   Write-Host "$($dash * 40) git & path" -ForegroundColor $fc
   git version
   Write-Host $env:path
-  
+
   # Add build system bin folders to path
   if ($isRI2) {
     $ssl_exe = "$msys2\$mingw\bin\openssl.exe"
