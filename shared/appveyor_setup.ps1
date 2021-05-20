@@ -377,8 +377,7 @@ function Load-Rubies {
     if ( !(Test-Path -Path $dir_ruby$v$suf -PathType Container) ) { continue }
     $rubies += $v
   }
-  echo $rubies
-  exit
+
   $rv_min = $rubies[-1].Substring(0,1) + '.' + $rubies[-1].Substring(1,1)
   if ($run_trunk) {
     # set $rv_max equal to one minor version above trunk
