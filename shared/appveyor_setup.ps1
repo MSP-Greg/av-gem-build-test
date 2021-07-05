@@ -210,9 +210,8 @@ function Check-OpenSSL {
           if ($okay) {
             Write-Host GPG key $key retrieved -ForegroundColor Yellow
           }
-          $temp = "$($env:TEMP.replace('\', '/').replace('C:', '/c'))/key.exp"
-          bash.exe -c `"gpg --export F98B8484BE8BF1C5 > $temp`"
-          bash.exe -c `"pacman-key --add $temp`"
+          bash.exe -c `"gpg --export F98B8484BE8BF1C5 > key.exp`"
+          bash.exe -c `"pacman-key --add key.exp`"
           # below is for occasional key retrieve failure on Appveyor
           if (!$okay) {
             Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor Yellow
