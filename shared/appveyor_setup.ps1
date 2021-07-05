@@ -165,11 +165,11 @@ function Check-OpenSSL {
 #          $uri = $rubyloco             # 2.7 64 bit ruby-loco, may use OpenSSL beta
 #          $key = $null
 #          $openssl_sha = '0c8be3277693f60c319f997659c2fed0eadce8535aed29a4617ec24da082b60ee30a03d3fe1024dae4461041e6e9a5e5cff1a68fa08b4b8791ea1bf7b02abc40'
-          'openssl-1.1.1.g'
+          'openssl-1.1.1.k'
          } else {
 #          $uri = $ri2_pkgs             # 2.7 32 bit
 #          $key = $ri2_key
-          'openssl-1.1.1.g'
+          'openssl-1.1.1.k'
          }
 
   $bit = if ($is64) { '64 bit' } else { '32 bit'}
@@ -207,7 +207,10 @@ function Check-OpenSSL {
           Write-Host "`ntry retrieving key" -ForegroundColor Yellow
 
           $okay = Retry bash.exe -c `"gpg --receive-keys $key`"
-          Retry bash.exe -c `"gpg --export F98B8484BE8BF1C5 | pacman-key --add -`"
+          if ($okay) {
+            Write-Host GPG key $key retreived -ForegroundColor Yellow
+          }
+          bash.exe -c `"gpg --export F98B8484BE8BF1C5 | pacman-key --add -`"
           # below is for occasional key retrieve failure on Appveyor
           if (!$okay) {
             Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor Yellow
