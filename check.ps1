@@ -6,7 +6,7 @@ cd C:\Greg\GitHub\av-gem-build-test
 . $PSScriptRoot\shared\appveyor_setup.ps1 $args[0]
 
 #———————————————————————————————————————————————————————————————— lowest ruby version
-Make-Const ruby_vers_low 19
+Make-Const ruby_vers_low 22
 # null = don't compile; false = compile, ignore test (allow failure);
 # true = compile & test
 Make-Const trunk     $null ; Make-Const trunk_x64     $null

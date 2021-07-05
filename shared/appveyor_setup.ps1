@@ -60,8 +60,9 @@ function Init-AV-Setup {
   # Misc
   Make-Const UTF8           $(New-Object System.Text.UTF8Encoding $False)
   Make-Const SSL_CERT_FILE "$dflt_ruby\ssl\cert.pem"
-  Make-Const ks1           'hkp://pool.sks-keyservers.net'
-  Make-Const ks2           'hkp://pgp.mit.edu'
+  #Make-Const ks1           'hkps://pool.sks-keyservers.net'
+  Make-Const ks1           'hkps://hkps.pool.sks-keyservers.net'
+  Make-Const ks2           'hkps://pgp.mit.edu'
   Make-Const dash          "$([char]0x2015)"
   Make-Const wc            $(New-Object System.Net.WebClient)
   [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
@@ -205,7 +206,8 @@ function Check-OpenSSL {
           #——————————————————————————————————————————————————————————————— Add GPG key
           Write-Host "`ntry retrieving key" -ForegroundColor Yellow
 
-          $okay = Retry bash.exe -c `"pacman-key -r $key --keyserver $ks1`"
+          $okay = Retry bash.exe -c `"gpg --receive-keys $key`"
+          Retry bash.exe -c `"gpg --export F98B8484BE8BF1C5 | pacman-key --add -`"
           # below is for occasional key retrieve failure on Appveyor
           if (!$okay) {
             Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor Yellow
