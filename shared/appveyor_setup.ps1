@@ -202,44 +202,8 @@ function Check-OpenSSL {
       } else {
         $openssl_fn = "$m_pre$openssl-$msys2_rev-any.pkg.tar.zst"
 
-        if ($key) {
-          #——————————————————————————————————————————————————————————————— Add GPG key
-          Write-Host "`ntry retrieving key" -ForegroundColor Yellow
-
-          $okay = Retry bash.exe -c `"gpg --receive-keys $key`"
-          if ($okay) {
-            Write-Host GPG key $key retrieved -ForegroundColor Yellow
-          }
-          bash.exe -c `"gpg --export F98B8484BE8BF1C5 > key.exp`"
-          bash.exe -c `"pacman-key --add key.exp`"
-          # below is for occasional key retrieve failure on Appveyor
-          if (!$okay) {
-            Write-Host GPG Key Lookup failed from $ks1 -ForegroundColor Yellow
-            # try another keyserver
-            $okay = Retry bash.exe -c `"pacman-key -r $key --keyserver $ks2`"
-            if (!$okay) {
-              Write-Host GPG Key Lookup failed from $ks2 -ForegroundColor Yellow
-              if ($in_av) {
-                Update-AppveyorBuild -Message "keyserver retrieval failed"
-              }
-              exit 1
-            } else { Write-Host GPG Key Lookup succeeded from $ks2 }
-          }   else { Write-Host GPG Key Lookup succeeded from $ks1 }
-          Write-Host "signing key" -ForegroundColor Yellow
-          bash.exe -c "pacman-key -f $key && pacman-key --lsign-key $key" 2>$null
-
-          if( !(Test-Path -Path $pkgs/$openssl_fn.sig -PathType Leaf) ) {
-            $wc.DownloadFile("$uri/$openssl_fn.sig", "$pkgs/$openssl_fn.sig")
-          }
-        }
-
         if( !(Test-Path -Path $pkgs/$openssl_fn -PathType Leaf) ) {
           $wc.DownloadFile("$uri/$openssl_fn"      , "$pkgs/$openssl_fn")
-          if ($openssl_sha -ne '') {
-            Check-SHA $pkgs $openssl_fn $uri $openssl_sha
-          } else {
-            $wc.DownloadFile("$uri/$openssl_fn.sig", "$pkgs/$openssl_fn.sig")
-          }
         }
 
         pacman.exe -Rdd --noconfirm --noprogressbar $($m_pre + 'openssl')
